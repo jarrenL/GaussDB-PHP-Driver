@@ -1,0 +1,406 @@
+<?php
+
+declare(strict_types=1);
+
+final class ContractRunner
+{
+    private array $results = [];
+
+    public function test(string $category, string $name, callable $test, bool $required = true): void
+    {
+        $started = hrtime(true);
+        try {
+            $detail = $test();
+            $this->results[] = $this->result($category, $name, 'pass', $required, $detail, $started);
+        } catch (Throwable $error) {
+            $this->results[] = $this->result(
+                $category,
+                $name,
+                $required ? 'fail' : 'compatibility-fail',
+                $required,
+                ['exception' => get_class($error), 'code' => (string) $error->getCode(), 'message' => $error->getMessage()],
+                $started
+            );
+        }
+    }
+
+    public function report(array $environment): int
+    {
+        $counts = ['pass' => 0, 'fail' => 0, 'compatibility-fail' => 0];
+        foreach ($this->results as $result) {
+            $counts[$result['status']]++;
+        }
+        echo json_encode(
+            ['environment' => $environment, 'summary' => $counts, 'tests' => $this->results],
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        ), PHP_EOL;
+        return $counts['fail'] === 0 ? 0 : 1;
+    }
+
+    private function result(string $category, string $name, string $status, bool $required, mixed $detail, int $started): array
+    {
+        return [
+            'category' => $category,
+            'name' => $name,
+            'status' => $status,
+            'required' => $required,
+            'duration_ms' => round((hrtime(true) - $started) / 1_000_000, 3),
+            'detail' => $detail,
+        ];
+    }
+}
+
+function expect(bool $condition, string $message): void
+{
+    if (!$condition) {
+        throw new RuntimeException($message);
+    }
+}
+
+function envRequired(string $name): string
+{
+    $value = getenv($name);
+    if ($value === false || $value === '') {
+        throw new RuntimeException("{$name} is required");
+    }
+    return $value;
+}
+
+function createConnection(array $options = [], ?string $passwordOverride = null): PDO
+{
+    $driver = getenv('GAUSS_TEST_DRIVER') ?: 'pgsql';
+    $user = getenv('GAUSS_USER') ?: 'gauss_php_test';
+    $password = $passwordOverride ?? envRequired('GAUSS_PASSWORD');
+    if ($driver === 'odbc') {
+        $connectionString = getenv('GAUSS_ODBC_CONNECTION_STRING');
+        $dsn = ($connectionString !== false && $connectionString !== '')
+            ? "odbc:{$connectionString}"
+            : 'odbc:' . (getenv('GAUSS_ODBC_DSN') ?: 'GaussDB507');
+    } elseif ($driver === 'pgsql') {
+        $host = getenv('GAUSS_HOST') ?: 'gaussdb-507';
+        $port = getenv('GAUSS_PORT') ?: '5432';
+        $database = getenv('GAUSS_DATABASE') ?: 'gdbdrv_m_test';
+        $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
+    } else {
+        throw new RuntimeException("Unsupported GAUSS_TEST_DRIVER: {$driver}");
+    }
+    return new PDO($dsn, $user, $password, $options + [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_STRINGIFY_FETCHES => false,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+}
+
+$profile = getenv('GAUSS_TEST_PROFILE') ?: PHP_OS_FAMILY . '-' . php_uname('m');
+$expectedDriver = getenv('GAUSS_TEST_DRIVER') ?: 'pgsql';
+$table = 'php_driver_contract_' . strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', $profile));
+$runner = new ContractRunner();
+$pdo = null;
+
+$runner->test('environment', 'required PDO extension is loaded', function () use ($expectedDriver): array {
+    $extension = $expectedDriver === 'odbc' ? 'pdo_odbc' : 'pdo_pgsql';
+    expect(extension_loaded($extension), "Missing PHP extension {$extension}");
+    return ['extension' => $extension, 'pdo_drivers' => PDO::getAvailableDrivers()];
+});
+
+$runner->test('connection', 'connect and identify driver', function () use (&$pdo, $expectedDriver): array {
+    $pdo = createConnection();
+    $actual = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    expect($actual === $expectedDriver, "Expected PDO driver {$expectedDriver}, got {$actual}");
+    return [
+        'pdo_driver' => $actual,
+        'server_version' => $pdo->getAttribute(PDO::ATTR_SERVER_VERSION),
+        'client_version' => $pdo->getAttribute(PDO::ATTR_CLIENT_VERSION),
+    ];
+});
+
+if (!$pdo instanceof PDO) {
+    exit($runner->report(['profile' => $profile, 'php' => PHP_VERSION, 'os' => PHP_OS, 'architecture' => php_uname('m')]));
+}
+
+try {
+    $pdo->exec("DROP TABLE IF EXISTS {$table}");
+    $runner->test('ddl', 'create isolated test table', function () use ($pdo, $table): void {
+        $pdo->exec("CREATE TABLE {$table} (
+            id BIGINT PRIMARY KEY,
+            name VARCHAR(256) NOT NULL,
+            amount DECIMAL(20,4),
+            enabled BOOLEAN,
+            payload VARBINARY(256),
+            note VARCHAR(256),
+            created_at TIMESTAMP
+        )");
+    });
+
+    $runner->test('crud', 'prepared insert and select', function () use ($pdo, $table): array {
+        $statement = $pdo->prepare("INSERT INTO {$table} VALUES (?, ?, ?, ?, ?, ?, ?)");
+        expect($statement->execute([1, 'basic', '1234567890123456.7890', 1, 'bytes', null, '2026-08-05 12:34:56']), 'Insert returned false');
+        $select = $pdo->prepare("SELECT * FROM {$table} WHERE id = ?");
+        $select->execute([1]);
+        $row = $select->fetch();
+        expect(is_array($row) && (string) $row['id'] === '1', 'Inserted row was not returned');
+        expect($row['amount'] === '1234567890123456.7890', 'DECIMAL precision changed');
+        expect($row['note'] === null, 'NULL did not round-trip');
+        return $row;
+    });
+
+    $runner->test('security', 'bound value resists SQL injection', function () use ($pdo, $table): void {
+        $value = "x'); DROP TABLE {$table}; --";
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name) VALUES (?, ?)");
+        $insert->execute([2, $value]);
+        $select = $pdo->prepare("SELECT name FROM {$table} WHERE id = ?");
+        $select->execute([2]);
+        expect($select->fetchColumn() === $value, 'Bound string changed or was executed as SQL');
+    });
+
+    $runner->test('crud', 'update delete and affected row counts', function () use ($pdo, $table): void {
+        $update = $pdo->prepare("UPDATE {$table} SET note = ? WHERE id = ?");
+        $update->execute(['updated', 1]);
+        expect($update->rowCount() === 1, 'UPDATE rowCount is not 1');
+        $delete = $pdo->prepare("DELETE FROM {$table} WHERE id = ?");
+        $delete->execute([2]);
+        expect($delete->rowCount() === 1, 'DELETE rowCount is not 1');
+    });
+
+    $runner->test('crud', 'empty string long text and BIGINT boundary', function () use ($pdo, $table): void {
+        $id = '9223372036854775806';
+        $name = str_repeat('A', 256);
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name, note) VALUES (?, ?, ?)");
+        $insert->execute([$id, $name, '']);
+        $row = $pdo->query("SELECT id, name, note FROM {$table} WHERE id = {$id}")->fetch();
+        expect((string) $row['id'] === $id, 'BIGINT boundary changed');
+        expect($row['name'] === $name, 'Maximum VARCHAR value changed');
+        expect($row['note'] === '', 'Empty string changed or became NULL');
+    });
+
+    $runner->test('types', 'signed integer and negative decimal values', function () use ($pdo, $table): array {
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name, amount) VALUES (?, ?, ?)");
+        $insert->execute(['-9223372036854775807', 'negative', '-12345.6250']);
+        $row = $pdo->query("SELECT id, amount FROM {$table} WHERE id = -9223372036854775807")->fetch();
+        expect((string) $row['id'] === '-9223372036854775807', 'Negative BIGINT changed');
+        expect((string) $row['amount'] === '-12345.6250', 'Negative DECIMAL changed');
+        return $row;
+    });
+
+    $runner->test('types', 'timestamp boundary value', function () use ($pdo, $table): array {
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name, created_at) VALUES (?, ?, ?)");
+        $insert->execute([70, 'time-boundary', '2038-01-19 03:14:07']);
+        $row = $pdo->query("SELECT created_at AS boundary_time FROM {$table} WHERE id = 70")->fetch();
+        expect(str_starts_with((string) $row['boundary_time'], '2038-01-19 03:14:07'), 'Timestamp boundary changed');
+        return $row;
+    });
+
+    $runner->test('prepare', 'prepared statement can be reused', function () use ($pdo, $table): void {
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name) VALUES (?, ?)");
+        foreach ([40 => 'batch-a', 41 => 'batch-b', 42 => 'batch-c'] as $id => $name) {
+            $insert->execute([$id, $name]);
+        }
+        expect((int) $pdo->query("SELECT COUNT(*) FROM {$table} WHERE id BETWEEN 40 AND 42")->fetchColumn() === 3, 'Reused statement did not insert all rows');
+    });
+
+    $runner->test('prepare', 'fetch modes and statement lifecycle', function () use ($pdo, $table): void {
+        $statement = $pdo->query("SELECT id, name FROM {$table} WHERE id = 1");
+        $assoc = $statement->fetch(PDO::FETCH_ASSOC);
+        expect(isset($assoc['id'], $assoc['name']), 'FETCH_ASSOC did not return named columns');
+        $statement->closeCursor();
+        $statement = $pdo->query("SELECT id, name FROM {$table} WHERE id = 1");
+        $numeric = $statement->fetch(PDO::FETCH_NUM);
+        expect(count($numeric) === 2 && (string) $numeric[0] === '1', 'FETCH_NUM result is incorrect');
+        $statement->closeCursor();
+        expect((int) $pdo->query('SELECT 1')->fetchColumn() === 1, 'Connection unusable after closeCursor');
+    });
+
+    $runner->test('volume', 'batch insert and paged result set', function () use ($pdo, $table): array {
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name) VALUES (?, ?)");
+        for ($id = 1000; $id < 1500; $id++) {
+            $insert->execute([$id, 'batch-' . $id]);
+        }
+        $page = $pdo->query("SELECT id FROM {$table} WHERE id >= 1000 ORDER BY id LIMIT 50 OFFSET 200")->fetchAll(PDO::FETCH_COLUMN);
+        expect(count($page) === 50, 'Paged query did not return 50 rows');
+        expect((string) $page[0] === '1200' && (string) $page[49] === '1249', 'ORDER BY/LIMIT/OFFSET result is incorrect');
+        return ['inserted' => 500, 'page_size' => count($page)];
+    });
+
+    $runner->test('volume', 'large UTF-8 text round-trip', function () use ($pdo, $table): array {
+        $pdo->exec("ALTER TABLE {$table} ADD COLUMN large_text TEXT");
+        $value = str_repeat('GaussDB中文-', 32768);
+        $update = $pdo->prepare("UPDATE {$table} SET large_text = ? WHERE id = 1");
+        $update->execute([$value]);
+        $actual = $pdo->query("SELECT large_text FROM {$table} WHERE id = 1")->fetchColumn();
+        expect($actual === $value, 'Large text did not round-trip exactly');
+        return ['bytes' => strlen($value)];
+    }, false);
+
+    $runner->test('transaction', 'rollback removes uncommitted row', function () use ($pdo, $table): void {
+        $pdo->beginTransaction();
+        $pdo->exec("INSERT INTO {$table} (id, name) VALUES (10, 'rollback')");
+        $pdo->rollBack();
+        expect((int) $pdo->query("SELECT COUNT(*) FROM {$table} WHERE id = 10")->fetchColumn() === 0, 'Rollback did not remove row');
+    });
+
+    $runner->test('transaction', 'commit persists row', function () use ($pdo, $table): void {
+        $pdo->beginTransaction();
+        $pdo->exec("INSERT INTO {$table} (id, name) VALUES (11, 'commit')");
+        $pdo->commit();
+        expect((int) $pdo->query("SELECT COUNT(*) FROM {$table} WHERE id = 11")->fetchColumn() === 1, 'Commit did not persist row');
+    });
+
+    $runner->test('transaction', 'savepoint rollback preserves outer transaction', function () use ($pdo, $table): void {
+        $pdo->beginTransaction();
+        try {
+            $pdo->exec("INSERT INTO {$table} (id, name) VALUES (12, 'outer')");
+            $pdo->exec('SAVEPOINT php_contract_sp');
+            $pdo->exec("INSERT INTO {$table} (id, name) VALUES (13, 'savepoint')");
+            $pdo->exec('ROLLBACK TO SAVEPOINT php_contract_sp');
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $error;
+        }
+        expect((int) $pdo->query("SELECT COUNT(*) FROM {$table} WHERE id IN (12,13)")->fetchColumn() === 1, 'Savepoint rollback result is incorrect');
+    });
+
+    $runner->test('error', 'duplicate key exposes SQLSTATE and connection recovers', function () use ($pdo, $table): array {
+        try {
+            $pdo->exec("INSERT INTO {$table} (id, name) VALUES (1, 'duplicate')");
+            throw new RuntimeException('Duplicate primary key unexpectedly succeeded');
+        } catch (PDOException $error) {
+            expect(strlen((string) $error->getCode()) === 5, 'Driver did not expose a five-character SQLSTATE');
+            $state = (string) $error->getCode();
+        }
+        expect((int) $pdo->query('SELECT 1')->fetchColumn() === 1, 'Connection cannot execute SQL after handled error');
+        return ['sqlstate' => $state];
+    });
+
+    $runner->test('error', 'not-null violation is rejected', function () use ($pdo, $table): array {
+        try {
+            $insert = $pdo->prepare("INSERT INTO {$table} (id, name) VALUES (?, ?)");
+            $insert->execute([20, null]);
+            throw new RuntimeException('NULL in NOT NULL column unexpectedly succeeded');
+        } catch (PDOException $error) {
+            return ['sqlstate' => (string) $error->getCode()];
+        }
+    });
+
+    $runner->test('connection', 'second connection sees committed data', function () use ($table): void {
+        $second = createConnection();
+        expect((int) $second->query("SELECT COUNT(*) FROM {$table} WHERE id = 11")->fetchColumn() === 1, 'Second connection cannot see committed row');
+    });
+
+    $runner->test('transaction', 'second connection cannot see uncommitted row', function () use ($pdo, $table): void {
+        $second = createConnection();
+        $pdo->beginTransaction();
+        try {
+            $pdo->exec("INSERT INTO {$table} (id, name) VALUES (50, 'uncommitted')");
+            expect((int) $second->query("SELECT COUNT(*) FROM {$table} WHERE id = 50")->fetchColumn() === 0, 'Dirty read exposed uncommitted row');
+            $pdo->rollBack();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $error;
+        }
+    });
+
+    $runner->test('metadata', 'column count and metadata are available', function () use ($pdo, $table): array {
+        $statement = $pdo->query("SELECT id, name, amount FROM {$table} WHERE id = 1");
+        expect($statement->columnCount() === 3, 'columnCount is not 3');
+        $metadata = [];
+        for ($index = 0; $index < 3; $index++) {
+            $metadata[] = $statement->getColumnMeta($index);
+        }
+        expect($metadata[0] !== false, 'getColumnMeta returned false');
+        return $metadata;
+    });
+
+    $runner->test('connection', 'persistent connection can execute and reset transaction', function () use ($table): void {
+        $persistent = createConnection([PDO::ATTR_PERSISTENT => true]);
+        expect((int) $persistent->query("SELECT COUNT(*) FROM {$table}")->fetchColumn() > 0, 'Persistent connection cannot query');
+        $persistent->beginTransaction();
+        $persistent->exec("INSERT INTO {$table} (id, name) VALUES (60, 'persistent-rollback')");
+        $persistent->rollBack();
+        expect((int) $persistent->query("SELECT COUNT(*) FROM {$table} WHERE id = 60")->fetchColumn() === 0, 'Persistent connection rollback failed');
+    }, false);
+
+    $runner->test('prepare', 'named parameter binding', function () use ($pdo, $table): void {
+        $statement = $pdo->prepare("SELECT name FROM {$table} WHERE id = :id");
+        $statement->execute(['id' => 1]);
+        expect($statement->fetchColumn() === 'basic', 'Named parameter returned wrong row');
+    }, false);
+
+    $runner->test('transaction', 'DDL rollback behavior', function () use ($pdo, $table): void {
+        $temporaryTable = $table . '_ddl';
+        $pdo->exec("DROP TABLE IF EXISTS {$temporaryTable}");
+        $pdo->beginTransaction();
+        try {
+            $pdo->exec("CREATE TABLE {$temporaryTable} (id BIGINT)");
+            $pdo->rollBack();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $error;
+        }
+        try {
+            $pdo->query("SELECT * FROM {$temporaryTable}");
+            $pdo->exec("DROP TABLE {$temporaryTable}");
+            throw new RuntimeException('CREATE TABLE survived transaction rollback');
+        } catch (PDOException) {
+            // Expected: the table should not exist after rollback.
+        }
+    }, false);
+
+    $runner->test('compatibility', 'UTF-8 Chinese and emoji round-trip', function () use ($pdo, $table): void {
+        $value = '中文与 emoji 🚀';
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name) VALUES (?, ?)");
+        $insert->execute([30, $value]);
+        $actual = $pdo->query("SELECT name FROM {$table} WHERE id = 30")->fetchColumn();
+        expect($actual === $value, 'UTF-8 text changed: ' . json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+    }, false);
+
+    $runner->test('compatibility', 'boolean PDO parameter round-trip', function () use ($pdo, $table): void {
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name, enabled) VALUES (?, ?, ?)");
+        $insert->bindValue(1, 31, PDO::PARAM_INT);
+        $insert->bindValue(2, 'bool', PDO::PARAM_STR);
+        $insert->bindValue(3, true, PDO::PARAM_BOOL);
+        $insert->execute();
+        $actual = $pdo->query("SELECT enabled FROM {$table} WHERE id = 31")->fetchColumn();
+        expect(in_array($actual, [true, 1, '1'], true), 'Boolean true did not return as 1/true');
+    }, false);
+
+    $runner->test('compatibility', 'binary value containing NUL round-trip', function () use ($pdo, $table): void {
+        $value = "A\x00B\xFFZ";
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name, payload) VALUES (?, ?, ?)");
+        $insert->execute([32, 'binary', $value]);
+        $actual = $pdo->query("SELECT payload FROM {$table} WHERE id = 32")->fetchColumn();
+        expect($actual === $value, 'Binary value changed; expected hex ' . bin2hex($value) . ', got ' . bin2hex((string) $actual));
+    }, false);
+
+    $runner->test('compatibility', 'timestamp microseconds round-trip', function () use ($pdo, $table): void {
+        $value = '2026-08-05 12:34:56.123456';
+        $insert = $pdo->prepare("INSERT INTO {$table} (id, name, created_at) VALUES (?, ?, ?)");
+        $insert->execute([33, 'timestamp', $value]);
+        $actual = $pdo->query("SELECT created_at FROM {$table} WHERE id = 33")->fetchColumn();
+        expect($actual === $value, "Timestamp precision changed: {$actual}");
+    }, false);
+} finally {
+    try {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $pdo->exec("DROP TABLE IF EXISTS {$table}");
+    } catch (Throwable $cleanupError) {
+        fwrite(STDERR, 'Cleanup failed: ' . $cleanupError->getMessage() . PHP_EOL);
+    }
+}
+
+exit($runner->report([
+    'profile' => $profile,
+    'php' => PHP_VERSION,
+    'os' => PHP_OS,
+    'architecture' => php_uname('m'),
+    'expected_pdo_driver' => $expectedDriver,
+]));
