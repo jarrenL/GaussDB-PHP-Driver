@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_gaussdb_integration:
+        description: Run licensed-driver integration tests on a GaussDB self-hosted runner
+        required: true
+        default: false
+        type: boolean
+      run_security_tests:
+        description: Run one controlled bad-password attempt and the pre-provisioned read-only test
+        required: true
+        default: false
+        type: boolean
+      require_ssl:
+        description: Require the self-hosted GaussDB instance to pass sslmode=require
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell scripts
+        run: |
+          bash -n docker/gaussdb-entrypoint.sh
+          bash -n packaging/linux-arm64/verify-image.sh
+          bash -n packaging/linux-x86_64/verify-image.sh
+          bash -n scripts/extract-gaussdb-507-client.sh
+          bash -n scripts/extract-gaussdb-507-windows-odbc.sh
+          bash -n scripts/extract-gaussdb-507-x86_64-client.sh
+          bash -n scripts/lib/extract-common.sh
+          bash -n tests/run-linux-driver-contract.sh
+          bash -n tests/run-linux-special-contract.sh
+          bash -n tests/modes/run-local-mode-matrix.sh
+      - name: Validate PHP files
+        run: make lint
+      - name: Validate tracked JSON baselines
+        run: php -r 'foreach (glob("tests/baselines/*.json") as $file) { json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR); echo "$file OK\n"; }'
+      - name: Parse PowerShell files
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem -Recurse -Include *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { $errors | Write-Error; $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+  gaussdb-integration:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_gaussdb_integration
+    runs-on: [self-hosted, gaussdb, docker]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract licensed client packages
+        env:
+          ARM64_ARCHIVE: ${{ vars.GAUSSDB_ARM64_DRIVER_ARCHIVE }}
+          X86_64_ARCHIVE: ${{ vars.GAUSSDB_X86_64_DRIVER_ARCHIVE }}
+        run: |
+          test -f "$ARM64_ARCHIVE"
+          test -f "$X86_64_ARCHIVE"
+          make extract-client-arm64 GAUSSDB_DRIVER_ARCHIVE="$ARM64_ARCHIVE"
+          make extract-client-x86_64 GAUSSDB_DRIVER_ARCHIVE="$X86_64_ARCHIVE"
+      - name: Build both Linux images
+        run: make build-php-arm64 build-php-x86_64
+      - name: Verify both Linux images
+        run: |
+          ./packaging/linux-arm64/verify-image.sh
+          ./packaging/linux-x86_64/verify-image.sh
+      - name: Run contract tests
+        env:
+          GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
+          GAUSS_HOST: ${{ vars.GAUSS_HOST }}
+          GAUSS_USER: ${{ vars.GAUSS_USER }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
+        run: make test-arm64 test-x86_64
+      - name: Characterize M TEXT threshold
+        env:
+          GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
+          GAUSS_HOST: ${{ vars.GAUSS_HOST }}
+          GAUSS_USER: ${{ vars.GAUSS_USER }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
+        run: make test-text-threshold
+      - name: Run controlled authentication and read-only tests
+        if: inputs.run_security_tests
+        env:
+          GAUSS_BAD_PASSWORD: ${{ secrets.GAUSS_BAD_PASSWORD }}
+          GAUSS_READONLY_USER: ${{ vars.GAUSS_READONLY_USER }}
+          GAUSS_READONLY_PASSWORD: ${{ secrets.GAUSS_READONLY_PASSWORD }}
+          GAUSS_HOST: ${{ vars.GAUSS_HOST }}
+          GAUSS_USER: ${{ vars.GAUSS_USER }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
+        run: make test-auth test-readonly
+      - name: Require SSL connectivity
+        if: inputs.require_ssl
+        env:
+          GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
+          GAUSS_HOST: ${{ vars.GAUSS_HOST }}
+          GAUSS_USER: ${{ vars.GAUSS_USER }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
+        run: make test-ssl

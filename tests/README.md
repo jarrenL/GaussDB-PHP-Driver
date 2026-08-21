@@ -1,6 +1,6 @@
 # 三平台驱动测试
 
-`php_pdo_contract.php` 是 Linux ARM64、Linux x86_64 和 Windows x64 共用的 PDO 契约测试。它不修改服务端配置，只创建一个带平台后缀的临时表，并在 `finally` 中清理。
+`php_pdo_contract.php` 是 Linux ARM64、Linux x86_64、Windows x64 和 Windows x86 共用的 PDO 契约测试。它不修改服务端配置，只创建一个带随机后缀的临时表，并在 `finally` 中清理；计时类型同时兼容 32 位 PHP。
 
 ## 有效性判定
 
@@ -20,11 +20,12 @@
 | 预处理/安全 | `?` 参数绑定、语句重复执行、含 SQL 注入内容的字符串 | 必需 |
 | 事务 | commit、rollback、savepoint、第二连接不可脏读 | 必需 |
 | 异常 | 主键冲突、NOT NULL、五位 SQLSTATE、异常后连接恢复 | 必需 |
-| 元数据 | `columnCount()`、`getColumnMeta()` | 必需 |
+| 元数据 | `columnCount()`、`getColumnMeta()`、BOOLEAN OID 5545、VARBINARY OID 9881 | 必需 |
 | 字符集 | 中文和 emoji 原样回显 | 兼容性 |
 | 类型 | `PDO::PARAM_BOOL`、含 NUL/0xFF 二进制、TIMESTAMP 微秒 | 兼容性 |
-| 数据量 | 500 行重复绑定、分页排序、约 400KB UTF-8 TEXT | 批量必需，大文本兼容性 |
+| 数据量 | 500 行重复绑定、分页排序、TEXT 65,535/65,536 字节边界 | 批量必需，大文本兼容性 |
 | 连接生命周期 | Fetch 模式、`closeCursor()` 后复用、持久连接及事务清理 | 基础必需，持久连接兼容性 |
+| identity/LOB | 无生成列及 AUTO_INCREMENT 的 `lastInsertId()`、BYTEA/BLOB/CLOB、VARBINARY `PARAM_LOB` 对照 | 兼容性/基线 |
 | 扩展语义 | 命名参数、DDL 事务回滚 | 兼容性 |
 
 冒烟文件仍保留，用于快速诊断；正式判断以契约测试为准。
@@ -49,7 +50,7 @@ GAUSS_PASSWORD='your-password' \
 
 可通过环境变量覆盖 `GAUSS_HOST`、`GAUSS_PORT`、`GAUSS_DATABASE`、`GAUSS_USER`、`GAUSS_DOCKER_NETWORK`，也可把第二个参数作为镜像名。
 
-## Windows x64
+## Windows x64 / x86
 
 先把 `php_pdo_contract.php` 和 `run-windows-driver-contract.ps1` 放到 Windows，然后执行：
 
@@ -59,17 +60,26 @@ $env:GAUSS_PASSWORD = 'your-password'
 ./run-windows-driver-contract.ps1
 ```
 
-默认报告为 `C:\GaussDBTest\windows-x64.json`。PHP、PDO_ODBC 和 GaussDB ODBC 必须全部为 x64。Windows x86 安装包不属于当前三个已规划交付物；如后续需要验证，只需增加 `windows-x86` profile 并改用 32 位 PHP。
+默认报告为 `C:\GaussDBTest\windows-x64.json`。X86 可直接运行 `run-windows-x86-contract.ps1`，其默认报告为 `C:\GaussDBTest\windows-x86.json`；PHP、PDO_ODBC、ODBC 注册表视图和 DLL 位数必须一致。side-by-side 安装方法见 `packaging/windows-odbc/README.md`。
 
-## 2026-08-05 本地实测基线
+Windows 执行器优先读取环境变量。文件方式会检查 ACL，拒绝继承权限或宽泛主体访问；无论测试成功还是失败，脚本都会在 `finally` 中删除默认密码/连接串文件。
 
-| 驱动交付物 | 必需/通过 | 必需/失败 | 兼容性失败 |
+## 2026-08-10 本地实测基线
+
+| 驱动交付物 | 总通过 | 必选失败 | 兼容性失败 |
 |---|---:|---:|---:|
-| Linux ARM64 + GaussDB libpq + PDO_PGSQL | 24 | 0 | 4 |
-| Linux x86_64 + GaussDB libpq + PDO_PGSQL | 24 | 0 | 4 |
-| Windows x64 + GaussDB ODBC + PDO_ODBC | 24 | 0 | 4 |
+| Linux ARM64 + GaussDB libpq + PDO_PGSQL | 27 | 0 | 7 |
+| Linux x86_64 + GaussDB libpq + PDO_PGSQL | 27 | 0 | 7 |
+| Windows x64 + GaussDB ODBC + PDO_ODBC | 25 | 0 | 9 |
+| Windows x86 + GaussDB ODBC + PDO_ODBC | 25 | 0 | 9 |
 
-Linux 两种架构的兼容性失败相同：约 400KB TEXT 超出当前类型限制、`PDO::PARAM_BOOL` 生成 `t`、含 NUL 的二进制被截断、TIMESTAMP 微秒丢失。Windows x64 的兼容性失败为大 TEXT、中文/emoji 回显、二进制返回十六进制文本、TIMESTAMP 微秒丢失；Windows 的 BOOL 场景通过。
+完整原始结果保存在 `tests/baselines/`。Linux 两种架构的扩展兼容性失败还包括 `lastInsertId()`、BYTEA 和 CLOB；Windows 还包括 ODBC 不支持 `lastInsertId()`、BLOB/VARBINARY 表示差异。集中解释见 `KNOWN_LIMITATIONS.md`。
+
+大 TEXT 边界由独立测试确认：65,535 字节成功，65,536 字节开始返回 SQLSTATE `22001`。复验入口：
+
+```bash
+GAUSS_PASSWORD='your-password' make test-text-threshold
+```
 
 ## 认证失败测试
 
@@ -78,7 +88,7 @@ Linux 两种架构的兼容性失败相同：约 400KB TEXT 超出当前类型�
 ```bash
 GAUSS_TEST_DRIVER=pgsql \
 GAUSS_BAD_PASSWORD='one-controlled-wrong-password' \
-php tests/php_pdo_auth_negative.php
+make test-auth
 ```
 
 发布验收时确认：
@@ -96,14 +106,18 @@ php tests/php_pdo_auth_negative.php
 GAUSS_TEST_DRIVER=pgsql \
 GAUSS_READONLY_USER='readonly_user' \
 GAUSS_READONLY_PASSWORD='password' \
-php tests/php_pdo_readonly_contract.php
+make test-readonly
 ```
 
 测试要求 `SELECT 1` 成功且 `CREATE TABLE` 被拒绝。它不会自动创建或授权用户，避免测试脚本要求管理员权限。
 
+## SSL 能力探测
+
+`GAUSS_PASSWORD='your-password' make test-ssl` 强制使用 `sslmode=require`。成功 TLS 返回 0；服务端不支持 SSL 时探测脚本返回 3，该非零状态会继续传递，因此 Make 目标和启用 `require_ssl` 的 CI 都会失败。这是 require-SSL 验收门禁的预期语义，不代表测试通过，也不会把 `sslmode=prefer` 误判成 SSL 成功。当前本地实例 `ssl=off`，实测错误为 `server does not support SSL, but SSL was required`。
+
 ## 明确不纳入当前自动化的场景
 
-按当前项目范围，不做断网、服务端重启、链路抖动和自动重连故障注入。SSL 证书链、死锁/锁等待、长时间压力与内存泄漏适合后续在独立集成或性能环境执行，避免日常驱动测试卡死或改变服务端状态。
+按当前项目范围，不做断网、服务端重启、链路抖动和自动重连故障注入。完整 SSL 证书链（单向/双向）、死锁/锁等待、长时间压力与内存泄漏适合后续在独立集成或性能环境执行，避免日常驱动测试卡死或改变服务端状态。
 
 ## 数据库兼容模式矩阵
 

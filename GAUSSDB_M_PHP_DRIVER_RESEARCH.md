@@ -66,7 +66,7 @@
 
 | 方案 | 面向 API | 复用组件 | 适用范围 | 工作量/风险 | 建议 |
 |---|---|---|---|---|---|
-| 8.100+ 的 M 端口 + mysqlnd | mysqli、PDO_MySQL | PHP mysqlnd | MySQL 生态、传统 PHP 应用 | 主要是服务端协议缺口和兼容测试 | **首选** |
+| 8.100+ 的 M 端口 + mysqlnd | mysqli、PDO_MySQL | PHP mysqlnd | 仅作新版本背景对照 | 需升级服务端，违反本项目 507/不改内核前提 | **不实施** |
 | 新建 PDO_GAUSSDB | PDO | GaussDB libpq | Laravel/Symfony/自研 PDO 应用 | 中等；类型、错误码、lastInsertId 需适配 | **507 首选** |
 | 直接 PDO_PGSQL | PDO | 系统/GaussDB libpq | PoC、可接受 `pgsql:` DSN 的应用 | 最低；品牌/API 语义和 M 类型可能有差异 | **先做基线验证** |
 | PDO_ODBC | PDO | GaussDB ODBC + unixODBC | 企业通用接入、验证 | 部署链更长；元数据、LOB、预编译差异更多 | 备选/兜底 |
@@ -83,7 +83,7 @@ OceanBase MySQL 模式的关键不是“做了 PHP 专用驱动”，而是 **OB
 - 语言专用驱动应只用于 GaussDB 特有能力，而不应重复实现通用 MySQL CRUD。
 - 若协议尚不完整，建立“驱动兼容矩阵 + 抓包差异 + 服务端修复清单”比 fork 每个语言驱动更划算。
 
-## 路线 A：8.100+ 直接适配 mysqlnd
+## 背景路线 A：8.100+ 直接适配 mysqlnd（本项目不实施）
 
 ### 第一轮必须验证
 
@@ -152,9 +152,9 @@ PHP application / ORM
 - 单独维护 M 类型 OID/名称映射，尤其 unsigned、JSON、时间、LOB。
 - 用 SQLSTATE 驱动 PDO 异常，同时保留 GaussDB 原始错误码供诊断。
 
-### MVP 边界
+### Phase 2 MVP 边界（目标，尚未交付）
 
-MVP 支持：连接/SSL、CRUD、事务、位置和命名参数、结果集、metadata、LOB 基础能力、错误码、持久连接安全 reset。
+Phase 2 MVP 计划支持：连接/SSL、CRUD、事务、位置和命名参数、结果集、metadata、LOB 基础能力、错误码、持久连接安全 reset。当前 Phase 1 只完成非 SSL 的 PDO_PGSQL/PDO_ODBC PoC；本地实例 `ssl=off`，LOB 和 identity 仍存在已记录差异。
 
 MVP 不承诺：mysqli API、MySQL wire protocol、WordPress 零改造、全密态（官方当前列出的驱动仅 gsql/JDBC/Go）、复制/CDC、异步 API。
 
@@ -166,15 +166,14 @@ MVP 不承诺：mysqli API、MySQL wire protocol、WordPress 零改造、全密�
 
 ### Phase 0：需求定界（0.5～1 天）
 
-收集目标 PHP 版本、操作系统/CPU、框架，以及“兼容 PHP”究竟指 PDO、mysqli，还是 WordPress/Discuz 等零改造应用。获取 8.100+ 可测试实例和 M 端口配置。
+收集目标 PHP 版本、操作系统/CPU、框架，以及“兼容 PHP”究竟指 PDO、mysqli，还是 WordPress/Discuz 等零改造应用。本项目当前约束固定为本地 GaussDB 507 实例且不修改内核；其他版本实例不作为前置条件。
 
 ### Phase 1：协议优先 PoC（3～5 天）
 
-- 8.100+ 上跑 mysqli/PDO_MySQL 测试矩阵。
 - 507 上跑 PDO_PGSQL 与 PDO_ODBC 基线。
 - 输出失败分类：握手、认证、命令、类型、元数据、SQL 行为。
 
-决策门：若 mysqlnd 主链路通过率高，停止开发新驱动，转为服务端协议补齐；若项目必须留在 507，进入 PDO_GAUSSDB。
+当前决策：项目留在 507 且不能修改内核，采用 libpq/ODBC 路线；MySQL wire protocol 和 mysqlnd 不在本项目范围。
 
 ### Phase 2：PDO_GAUSSDB MVP（约 3～6 周）
 
@@ -189,9 +188,11 @@ MVP 不承诺：mysqli API、MySQL wire protocol、WordPress 零改造、全密�
 - RPM/DEB、容器镜像、版本兼容表、SSL 配置和诊断工具。
 - 性能测试：短连接、持久连接、prepare 重用、大结果集和并发。
 
-## Go / No-Go 标准
+## 历史 Go / No-Go 标准（当前约束已完成决策）
 
-优先判定升级 + mysqlnd 为 Go，若满足：
+以下是通用选型时的历史判定条件。本项目已固定 GaussDB 507、不升级且不修改内核，因此实施决策已是 `libpq/PDO_PGSQL + ODBC/PDO_ODBC`；升级 + mysqlnd 不是当前候选项。
+
+在无 507 约束的新项目中，可仅在以下条件满足时判定升级 + mysqlnd 为 Go：
 
 - mysqli 与 PDO_MySQL 的核心协议测试通过率至少 95%；
 - 失败项可通过服务端协议兼容修复，不需长期 fork PHP；

@@ -1,0 +1,21 @@
+.git
+.github
+.idea
+.vscode
+.DS_Store
+dist
+vendor
+build/test-results
+# Runtime tests and the database entrypoint are executed/mounted separately;
+# the current PHP client images only need the extracted clients and extension source.
+docs
+tests
+examples
+scripts
+docker
+**/*.md
+**/*.log
+**/*.zip
+**/*.exe
+**/*.dll
+**/*.tar.gz

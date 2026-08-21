@@ -1,0 +1,388 @@
+{
+    "environment": {
+        "profile": "windows-x64",
+        "php": "8.3.8",
+        "os": "WINNT",
+        "architecture": "AMD64",
+        "expected_pdo_driver": "odbc"
+    },
+    "summary": {
+        "pass": 25,
+        "fail": 0,
+        "compatibility-fail": 9
+    },
+    "tests": [
+        {
+            "category": "environment",
+            "name": "required PDO extension is loaded",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 0.029,
+            "detail": {
+                "extension": "pdo_odbc",
+                "pdo_drivers": [
+                    "odbc"
+                ]
+            }
+        },
+        {
+            "category": "connection",
+            "name": "connect and identify driver",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 262.49,
+            "detail": {
+                "pdo_driver": "odbc",
+                "server_version": "9.2.4",
+                "client_version": "ODBC-Win32"
+            }
+        },
+        {
+            "category": "ddl",
+            "name": "create isolated test table",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 6.552,
+            "detail": null
+        },
+        {
+            "category": "crud",
+            "name": "prepared insert and select",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 11.516,
+            "detail": {
+                "id": "1",
+                "name": "basic",
+                "amount": "1234567890123456.7890",
+                "enabled": "1",
+                "payload": "6279746573",
+                "note": null,
+                "created_at": "2026-08-05 12:34:56"
+            }
+        },
+        {
+            "category": "security",
+            "name": "bound value resists SQL injection",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 7.571,
+            "detail": null
+        },
+        {
+            "category": "crud",
+            "name": "update delete and affected row counts",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 7.554,
+            "detail": null
+        },
+        {
+            "category": "crud",
+            "name": "empty string long text and BIGINT boundary",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 6.38,
+            "detail": null
+        },
+        {
+            "category": "types",
+            "name": "signed integer and negative decimal values",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 5.719,
+            "detail": {
+                "id": "-9223372036854775807",
+                "amount": "-12345.6250"
+            }
+        },
+        {
+            "category": "types",
+            "name": "timestamp boundary value",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 6.081,
+            "detail": {
+                "boundary_time": "2038-01-19 03:14:07"
+            }
+        },
+        {
+            "category": "prepare",
+            "name": "prepared statement can be reused",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 10.032,
+            "detail": null
+        },
+        {
+            "category": "prepare",
+            "name": "fetch modes and statement lifecycle",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 6.972,
+            "detail": null
+        },
+        {
+            "category": "volume",
+            "name": "batch insert and paged result set",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 1020.785,
+            "detail": {
+                "inserted": 500,
+                "page_size": 50
+            }
+        },
+        {
+            "category": "volume",
+            "name": "large UTF-8 text round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 30.262,
+            "detail": {
+                "exception": "PDOException",
+                "code": "22001",
+                "message": "SQLSTATE[22001]: String data, right truncated: 1 ERROR: Data too long for type text;\nError while executing the query (SQLExecute[1] at ext\\pdo_odbc\\odbc_stmt.c:263)"
+            }
+        },
+        {
+            "category": "transaction",
+            "name": "rollback removes uncommitted row",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 10.01,
+            "detail": null
+        },
+        {
+            "category": "transaction",
+            "name": "commit persists row",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 9.265,
+            "detail": null
+        },
+        {
+            "category": "transaction",
+            "name": "savepoint rollback preserves outer transaction",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 16.053,
+            "detail": null
+        },
+        {
+            "category": "error",
+            "name": "duplicate key exposes SQLSTATE and connection recovers",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 7.128,
+            "detail": {
+                "sqlstate": "23505"
+            }
+        },
+        {
+            "category": "error",
+            "name": "not-null violation is rejected",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 3.281,
+            "detail": {
+                "sqlstate": "23502"
+            }
+        },
+        {
+            "category": "connection",
+            "name": "second connection sees committed data",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 42.164,
+            "detail": null
+        },
+        {
+            "category": "transaction",
+            "name": "second connection cannot see uncommitted row",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 29.115,
+            "detail": null
+        },
+        {
+            "category": "metadata",
+            "name": "standard and M private type metadata are available",
+            "status": "pass",
+            "required": true,
+            "duration_ms": 9.302,
+            "detail": {
+                "id": {
+                    "pdo_type": 2,
+                    "name": "id",
+                    "len": 20,
+                    "precision": 0
+                },
+                "name": {
+                    "pdo_type": 2,
+                    "name": "name",
+                    "len": 256,
+                    "precision": 0
+                },
+                "amount": {
+                    "pdo_type": 2,
+                    "name": "amount",
+                    "len": 22,
+                    "precision": 0
+                },
+                "enabled": {
+                    "pdo_type": 2,
+                    "name": "enabled",
+                    "len": 3,
+                    "precision": 0
+                },
+                "payload": {
+                    "pdo_type": 2,
+                    "name": "payload",
+                    "len": 256,
+                    "precision": 0
+                }
+            }
+        },
+        {
+            "category": "identity",
+            "name": "lastInsertId without generated identity is characterized",
+            "status": "pass",
+            "required": false,
+            "duration_ms": 1.121,
+            "detail": {
+                "outcome": "exception",
+                "sqlstate": "IM001",
+                "message": "SQLSTATE[IM001]: Driver does not support this function: driver does not support lastInsertId()"
+            }
+        },
+        {
+            "category": "identity",
+            "name": "M AUTO_INCREMENT and PDO lastInsertId agree",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 11.813,
+            "detail": {
+                "exception": "PDOException",
+                "code": "IM001",
+                "message": "SQLSTATE[IM001]: Driver does not support this function: driver does not support lastInsertId()"
+            }
+        },
+        {
+            "category": "lob",
+            "name": "BYTEA type availability in M mode",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 1.675,
+            "detail": {
+                "exception": "PDOException",
+                "code": "42601",
+                "message": "SQLSTATE[42601]: Syntax error: 1 ERROR: syntax error at or near \"BYTEA\";\nError while executing the query (SQLExecDirect[1] at ext\\pdo_odbc\\odbc_driver.c:241)"
+            }
+        },
+        {
+            "category": "lob",
+            "name": "BLOB basic round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 14.835,
+            "detail": {
+                "exception": "RuntimeException",
+                "code": "0",
+                "message": "BLOB did not round-trip exactly"
+            }
+        },
+        {
+            "category": "lob",
+            "name": "CLOB basic round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 3.997,
+            "detail": {
+                "exception": "PDOException",
+                "code": "42601",
+                "message": "SQLSTATE[42601]: Syntax error: 1 ERROR: syntax error at or near \"CLOB\";\nError while executing the query (SQLExecDirect[1] at ext\\pdo_odbc\\odbc_driver.c:241)"
+            }
+        },
+        {
+            "category": "lob",
+            "name": "VARBINARY using PDO PARAM_LOB round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 8.365,
+            "detail": {
+                "exception": "RuntimeException",
+                "code": "0",
+                "message": "PDO::PARAM_LOB VARBINARY changed; got 344334463432324434313030343246463541"
+            }
+        },
+        {
+            "category": "connection",
+            "name": "persistent connection can execute and reset transaction",
+            "status": "pass",
+            "required": false,
+            "duration_ms": 32.79,
+            "detail": null
+        },
+        {
+            "category": "prepare",
+            "name": "named parameter binding",
+            "status": "pass",
+            "required": false,
+            "duration_ms": 3.007,
+            "detail": null
+        },
+        {
+            "category": "transaction",
+            "name": "DDL rollback behavior",
+            "status": "pass",
+            "required": false,
+            "duration_ms": 4.402,
+            "detail": null
+        },
+        {
+            "category": "compatibility",
+            "name": "UTF-8 Chinese and emoji round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 8.137,
+            "detail": {
+                "exception": "RuntimeException",
+                "code": "0",
+                "message": "UTF-8 text changed: \"\""
+            }
+        },
+        {
+            "category": "compatibility",
+            "name": "boolean PDO parameter round-trip",
+            "status": "pass",
+            "required": false,
+            "duration_ms": 8.014,
+            "detail": null
+        },
+        {
+            "category": "compatibility",
+            "name": "binary value containing NUL round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 6.372,
+            "detail": {
+                "exception": "RuntimeException",
+                "code": "0",
+                "message": "Binary value changed; expected hex 410042ff5a, got 34313030343246463541"
+            }
+        },
+        {
+            "category": "compatibility",
+            "name": "timestamp microseconds round-trip",
+            "status": "compatibility-fail",
+            "required": false,
+            "duration_ms": 5.632,
+            "detail": {
+                "exception": "RuntimeException",
+                "code": "0",
+                "message": "Timestamp precision changed: 2026-08-05 12:34:56"
+            }
+        }
+    ]
+}

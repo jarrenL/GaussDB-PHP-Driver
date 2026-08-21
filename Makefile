@@ -4,7 +4,7 @@ GAUSSDB_DRIVER_ARCHIVE ?=
 ARM64_PHP_IMAGE ?= gaussdb-php:8.3-arm64-prototype
 X86_64_PHP_IMAGE ?= gaussdb-php:8.3-x86_64-prototype
 
-.PHONY: help extract-client extract-client-arm64 extract-client-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 test-arm64 test-x86_64 test-modes lint
+.PHONY: help docker-preflight extract-client extract-client-arm64 extract-client-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint
 
 help:
 	@echo "make extract-client-arm64 GAUSSDB_DRIVER_ARCHIVE=/path/to/aarch64-driver.tar.gz"
@@ -15,7 +15,14 @@ help:
 	@echo "GAUSS_PASSWORD=... make test-arm64"
 	@echo "GAUSS_PASSWORD=... make test-x86_64"
 	@echo "GAUSS_PASSWORD=... make test-modes"
+	@echo "GAUSS_BAD_PASSWORD=... make test-auth"
+	@echo "GAUSS_READONLY_USER=... GAUSS_READONLY_PASSWORD=... make test-readonly"
+	@echo "GAUSS_PASSWORD=... make test-text-threshold"
+	@echo "GAUSS_PASSWORD=... make test-ssl (SSL unavailable => non-zero failure; probe exit 3 propagates to Make/CI)"
 	@echo "make lint"
+
+docker-preflight:
+	./docker/preflight.sh
 
 extract-client: extract-client-arm64
 
@@ -50,11 +57,23 @@ test-x86_64:
 test-modes:
 	./tests/modes/run-local-mode-matrix.sh
 
+test-auth:
+	@test -n "$${GAUSS_BAD_PASSWORD:-}" || (echo "GAUSS_BAD_PASSWORD is required" >&2; exit 2)
+	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_auth_negative.php "$(ARM64_PHP_IMAGE)"
+
+test-readonly:
+	@test -n "$${GAUSS_READONLY_USER:-}" || (echo "GAUSS_READONLY_USER is required" >&2; exit 2)
+	@test -n "$${GAUSS_READONLY_PASSWORD:-}" || (echo "GAUSS_READONLY_PASSWORD is required" >&2; exit 2)
+	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_readonly_contract.php "$(ARM64_PHP_IMAGE)"
+
+test-text-threshold:
+	@test -n "$${GAUSS_PASSWORD:-}" || (echo "GAUSS_PASSWORD is required" >&2; exit 2)
+	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_large_text_threshold.php "$(ARM64_PHP_IMAGE)"
+
+test-ssl:
+	@test -n "$${GAUSS_PASSWORD:-}" || (echo "GAUSS_PASSWORD is required" >&2; exit 2)
+	@# Probe exit 3 intentionally remains non-zero: a require-SSL gate must fail when TLS is unavailable.
+	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_ssl_probe.php "$(ARM64_PHP_IMAGE)"
+
 lint:
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/examples/pdo_pgsql_prototype.php
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/tests/php_pdo_pgsql_smoke.php
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/tests/php_pdo_odbc_smoke.php
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/tests/php_pdo_contract.php
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/tests/php_pdo_auth_negative.php
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/tests/php_pdo_readonly_contract.php
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm php -l /workspace/tests/modes/php_mode_contract.php
+	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm sh -eu -c 'for file in /workspace/examples/*.php /workspace/tests/*.php /workspace/tests/modes/*.php; do php -l "$$file"; done'

@@ -59,7 +59,8 @@ $run('mode is correctly detected', true, static function () use ($actualMode, $e
     return ['datcompatibility' => $actualMode];
 });
 
-$table = 'php_mode_contract';
+$runId = getenv('GAUSS_TEST_RUN_ID') ?: bin2hex(random_bytes(6));
+$table = 'php_mode_contract_' . substr(hash('sha256', $database . ':' . $runId), 0, 12);
 try {
     $pdo->exec("DROP TABLE IF EXISTS {$table}");
 

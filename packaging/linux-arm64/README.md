@@ -20,6 +20,8 @@ make build-php
 ./packaging/linux-arm64/verify-image.sh
 ```
 
-提取脚本只接受包含 507.0.0 B071 Distributed/Euler2.10/ARM64 客户端的总包，并校验 `libpq.so.5.5` SHA-256。生成的 `build/` 目录不会提交到 Git。
+提取脚本默认接受 507.0.0 B071 Distributed/Euler2.10/ARM64 客户端并严格校验 `libpq.so.5.5` SHA-256。升级驱动时可显式设置 `GAUSSDB_PACKAGE_SERIES`、`GAUSSDB_RELEASE_VERSION`、`GAUSSDB_BUILD_VERSION` 和 `GAUSSDB_EXPECTED_LIBPQ_SHA256`；不会静默接受未知二进制。生成的 `build/` 目录不会提交到 Git。
 
 镜像不会让客户端包内的旧 `libstdc++.so.6` 和 `libcurl.so.4` 覆盖 PHP/Debian 系统版本；实测这两组库会造成 PHP 的 ICU/cURL 依赖冲突。libpq 使用系统较新 libstdc++，其余认证和加密相关依赖继续从 GaussDB 客户端目录加载。
+
+PDO 扩展直接使用 GaussDB 507 的头文件和 `libpq.so.5.5` 编译、链接。构建阶段会比较 `pdo_pgsql.so`/`pgsql.so` 所需的 `PQ*` 符号与 GaussDB libpq 的导出符号，缺失时立即失败。运行时通过扩展和客户端库自身的 RPATH 定位私有依赖，不设置全局 `LD_LIBRARY_PATH`，因此客户端随包的 SSL/Kerberos 库不会影响无关 PHP 扩展。

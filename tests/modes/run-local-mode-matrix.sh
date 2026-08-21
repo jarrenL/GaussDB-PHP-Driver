@@ -5,11 +5,27 @@ set -euo pipefail
 
 database_container=${GAUSS_DATABASE_CONTAINER:-gaussdb-507}
 php_image=${GAUSS_PHP_IMAGE:-gaussdb-php:8.3-arm64-prototype}
+php_platform=${GAUSS_PHP_PLATFORM:-linux/arm64}
 docker_network=${GAUSS_DOCKER_NETWORK:-gaussdb_default}
 database_user=${GAUSS_USER:-gauss_php_test}
 result_dir=${GAUSS_RESULT_DIR:-build/test-results/modes}
 gsql='export LD_LIBRARY_PATH=/opt/gaussdb/app/lib; /opt/gaussdb/app/bin/gsql'
 created_databases=()
+
+for identifier in "$database_container" "$docker_network"; do
+  if [[ ! $identifier =~ ^[A-Za-z0-9_.-]+$ ]]; then
+    echo "Unsafe identifier: $identifier" >&2
+    exit 2
+  fi
+done
+if [[ ! $database_user =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "GAUSS_USER must be a simple SQL identifier" >&2
+  exit 2
+fi
+if [[ ! ${GAUSS_M_DATABASE:-gdbdrv_m_test} =~ ^[A-Za-z][A-Za-z0-9_]*$ ]]; then
+  echo "GAUSS_M_DATABASE must be a simple SQL identifier" >&2
+  exit 2
+fi
 
 mkdir -p "$result_dir"
 
@@ -37,7 +53,7 @@ run_mode() {
     "$gsql -d $database -p 5432 -v ON_ERROR_STOP=1 -c \"GRANT ALL ON SCHEMA public TO $database_user\"" \
     >/dev/null
 
-  docker run --rm --platform linux/arm64 --network "$docker_network" \
+  docker run --rm --platform "$php_platform" --network "$docker_network" \
     -e GAUSS_DATABASE="$database" \
     -e GAUSS_EXPECTED_MODE="$expected_mode" \
     -e GAUSS_HOST="$database_container" \
@@ -57,7 +73,7 @@ run_existing_mode() {
   local database=$2
   local expected_mode=$3
 
-  docker run --rm --platform linux/arm64 --network "$docker_network" \
+  docker run --rm --platform "$php_platform" --network "$docker_network" \
     -e GAUSS_DATABASE="$database" \
     -e GAUSS_EXPECTED_MODE="$expected_mode" \
     -e GAUSS_HOST="$database_container" \

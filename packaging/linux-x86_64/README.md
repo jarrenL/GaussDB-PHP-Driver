@@ -14,3 +14,5 @@ make build-php-x86_64
 ```
 
 在 ARM64 主机上，Docker Desktop 通过 `linux/amd64` 模拟构建和运行；正式发布仍需在原生 x86_64 CI runner 上复验性能和 ABI。
+
+与 ARM64 构建一致，PDO 扩展直接使用 GaussDB 507 头文件和 libpq 编译、链接，并在构建时检查 `PQ*` 符号闭包。运行时通过 RPATH 精确加载 GaussDB `libpq.so.5.5` 及其私有依赖，不设置全局 `LD_LIBRARY_PATH`。

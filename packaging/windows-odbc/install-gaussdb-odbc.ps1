@@ -15,11 +15,10 @@ if ($process.ExitCode -ne 0) {
 }
 
 $drivers = Get-OdbcDriver | Where-Object {
-    $_.Name -match 'Gauss|gsql|PostgreSQL'
+    $_.Name -in @('GaussDB Unicode', 'GaussDB ANSI', 'gsqlodbc')
 }
 if (-not $drivers) {
     throw 'Installation completed but no GaussDB-compatible ODBC driver was registered'
 }
 
 $drivers | Format-Table Name, Platform, Attribute -AutoSize
-
