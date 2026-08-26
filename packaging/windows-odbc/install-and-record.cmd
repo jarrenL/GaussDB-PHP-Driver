@@ -1,5 +1,6 @@
 @echo off
 if not exist C:\GaussDBTest mkdir C:\GaussDBTest
-start /wait "" C:\Windows\Temp\gsqlodbc507x64.exe /S
+set "INSTALLER=%~1"
+if "%INSTALLER%"=="" set "INSTALLER=C:\Windows\Temp\gsqlodbc-x64.exe"
+start /wait "" "%INSTALLER%" /S
 echo %ERRORLEVEL%>C:\GaussDBTest\install-exit-code.txt
-

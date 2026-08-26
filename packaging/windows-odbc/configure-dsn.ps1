@@ -1,5 +1,5 @@
 param(
-    [string]$Name = 'GaussDB507',
+    [string]$Name = 'GaussDB',
     [Parameter(Mandatory = $true)]
     [string]$DriverName,
     [Parameter(Mandatory = $true)]

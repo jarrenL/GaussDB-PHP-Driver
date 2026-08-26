@@ -24,7 +24,6 @@ $pdo = new PDO(
 );
 
 $statement = $pdo->prepare('SELECT ? AS message');
-$statement->execute(['GaussDB 507 M mode is reachable from PHP PDO']);
+$statement->execute(['GaussDB M mode is reachable from PHP PDO']);
 
 print_r($statement->fetch());
-

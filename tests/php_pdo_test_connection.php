@@ -12,9 +12,9 @@ function createTestConnection(array $dsnOptions = []): PDO
     }
     if ($driver === 'odbc') {
         $connectionString = getenv('GAUSS_ODBC_CONNECTION_STRING');
-        $dsn = $connectionString ? "odbc:{$connectionString}" : 'odbc:' . (getenv('GAUSS_ODBC_DSN') ?: 'GaussDB507');
+        $dsn = $connectionString ? "odbc:{$connectionString}" : 'odbc:' . (getenv('GAUSS_ODBC_DSN') ?: 'GaussDB');
     } else {
-        $host = getenv('GAUSS_HOST') ?: 'gaussdb-507';
+        $host = getenv('GAUSS_HOST') ?: 'gaussdb';
         $port = getenv('GAUSS_PORT') ?: '5432';
         $database = getenv('GAUSS_DATABASE') ?: 'gdbdrv_m_test';
         $options = $dsnOptions ? ';' . http_build_query($dsnOptions, '', ';') : '';

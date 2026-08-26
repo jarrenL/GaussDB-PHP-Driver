@@ -2,9 +2,9 @@ name: gaussdb
 
 services:
   database:
-    image: ${GAUSSDB_IMAGE:-gaussdb507-arm64:507.0.0}
-    container_name: ${GAUSSDB_CONTAINER_NAME:-gaussdb-507}
-    hostname: ${GAUSSDB_HOSTNAME:-gaussdb-507}
+    image: ${GAUSSDB_IMAGE:-gaussdb:local}
+    container_name: ${GAUSSDB_CONTAINER_NAME:-gaussdb}
+    hostname: ${GAUSSDB_HOSTNAME:-gaussdb}
     platform: ${GAUSSDB_PLATFORM:-linux/arm64}
     entrypoint: /usr/local/bin/gaussdb-entrypoint.sh
     environment:
@@ -37,4 +37,4 @@ services:
 volumes:
   gaussdb-data:
     external: true
-    name: ${GAUSSDB_DATA_VOLUME:-gaussdb507-data}
+    name: ${GAUSSDB_DATA_VOLUME:-gaussdb-data}

@@ -25,7 +25,7 @@ docker run --rm --platform "$platform" \
   --network "${GAUSS_DOCKER_NETWORK:-gaussdb_default}" \
   -e GAUSS_TEST_PROFILE="$profile" \
   -e GAUSS_TEST_DRIVER=pgsql \
-  -e GAUSS_HOST="${GAUSS_HOST:-gaussdb-507}" \
+  -e GAUSS_HOST="${GAUSS_HOST:-gaussdb}" \
   -e GAUSS_PORT="${GAUSS_PORT:-5432}" \
   -e GAUSS_DATABASE="${GAUSS_DATABASE:-gdbdrv_m_test}" \
   -e GAUSS_USER="${GAUSS_USER:-gauss_php_test}" \

@@ -29,7 +29,7 @@ if [[ ! -f "$data_directory/PG_VERSION" ]]; then
     chmod 700 "$data_directory"
     gs_initdb \
         -D "$data_directory" \
-        --nodename="${GAUSSDB_NODE_NAME:-gaussdb_507}" \
+        --nodename="${GAUSSDB_NODE_NAME:-gaussdb_node}" \
         --username="$admin_user" \
         --pwfile="$password_file" \
         --auth-local=trust \

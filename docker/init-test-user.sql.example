@@ -1,13 +1,13 @@
 -- Copy this file to a secret-controlled host path, replace the password token,
 -- and mount the copy as /docker-entrypoint-initdb.d/10-test-user.sql:ro.
 -- It is executed only during first initialization of an empty data directory.
--- GaussDB 507 allows only one M-compatible database; if one already exists,
+-- Some GaussDB deployments allow only one M-compatible database; if one already exists,
 -- remove CREATE DATABASE and connect to that existing database instead.
 
 CREATE USER gauss_php_test PASSWORD '<REPLACE_WITH_STRONG_PASSWORD>';
 CREATE DATABASE gdbdrv_m_test OWNER gauss_php_test DBCOMPATIBILITY 'M';
 
--- gsql 507 documents this as \c[onnect] [DBNAME ...].
+-- gsql documents this as \c[onnect] [DBNAME ...].
 \c gdbdrv_m_test
 CREATE SCHEMA gauss_php_test AUTHORIZATION gauss_php_test;
 GRANT USAGE, CREATE ON SCHEMA gauss_php_test TO gauss_php_test;

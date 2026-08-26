@@ -31,9 +31,10 @@ jobs:
           bash -n docker/gaussdb-entrypoint.sh
           bash -n packaging/linux-arm64/verify-image.sh
           bash -n packaging/linux-x86_64/verify-image.sh
-          bash -n scripts/extract-gaussdb-507-client.sh
-          bash -n scripts/extract-gaussdb-507-windows-odbc.sh
-          bash -n scripts/extract-gaussdb-507-x86_64-client.sh
+          bash -n scripts/extract-gaussdb-client-arm64.sh
+          bash -n scripts/extract-gaussdb-linux-odbc.sh
+          bash -n scripts/extract-gaussdb-windows-odbc.sh
+          bash -n scripts/extract-gaussdb-client-x86_64.sh
           bash -n scripts/lib/extract-common.sh
           bash -n tests/run-linux-driver-contract.sh
           bash -n tests/run-linux-special-contract.sh

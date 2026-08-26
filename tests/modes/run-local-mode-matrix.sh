@@ -3,7 +3,7 @@ set -euo pipefail
 
 : "${GAUSS_PASSWORD:?GAUSS_PASSWORD is required}"
 
-database_container=${GAUSS_DATABASE_CONTAINER:-gaussdb-507}
+database_container=${GAUSS_DATABASE_CONTAINER:-gaussdb}
 php_image=${GAUSS_PHP_IMAGE:-gaussdb-php:8.3-arm64-prototype}
 php_platform=${GAUSS_PHP_PLATFORM:-linux/arm64}
 docker_network=${GAUSS_DOCKER_NETWORK:-gaussdb_default}

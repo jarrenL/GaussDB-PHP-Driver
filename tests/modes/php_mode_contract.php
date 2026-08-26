@@ -13,7 +13,7 @@ if (!$database || !$expectedMode || !$password) {
 $pdo = new PDO(
     sprintf(
         'pgsql:host=%s;port=%s;dbname=%s',
-        getenv('GAUSS_HOST') ?: 'gaussdb-507',
+        getenv('GAUSS_HOST') ?: 'gaussdb',
         getenv('GAUSS_PORT') ?: '5432',
         $database
     ),

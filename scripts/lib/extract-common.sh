@@ -47,6 +47,20 @@ verify_sha256() {
     printf '%s\n' "$actual"
 }
 
+verify_sha256_if_expected() {
+    local path=$1
+    local expected=${2:-}
+    local actual
+    actual=$(sha256_file "$path")
+    if [[ -n "$expected" && "$actual" != "$expected" ]]; then
+        echo "Unexpected SHA-256 for $path" >&2
+        echo "Expected: $expected" >&2
+        echo "Actual:   $actual" >&2
+        exit 1
+    fi
+    printf '%s\n' "$actual"
+}
+
 replace_directory() {
     local source=$1
     local destination=$2

@@ -37,23 +37,23 @@ extract-client: extract-client-arm64
 
 extract-client-arm64:
 	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
-	./scripts/extract-gaussdb-507-client.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-arm64
+	./scripts/extract-gaussdb-client-arm64.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-arm64
 
 extract-client-x86_64:
 	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
-	./scripts/extract-gaussdb-507-x86_64-client.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-x86_64
+	./scripts/extract-gaussdb-client-x86_64.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-x86_64
 
 extract-windows-odbc:
 	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
-	./scripts/extract-gaussdb-507-windows-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/windows-odbc
+	./scripts/extract-gaussdb-windows-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/windows-odbc
 
 extract-odbc-arm64:
 	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
-	./scripts/extract-gaussdb-507-linux-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-arm64-odbc arm64
+	./scripts/extract-gaussdb-linux-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-arm64-odbc arm64
 
 extract-odbc-x86_64:
 	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
-	./scripts/extract-gaussdb-507-linux-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-x86_64-odbc x86_64
+	./scripts/extract-gaussdb-linux-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-x86_64-odbc x86_64
 
 build-php: build-php-arm64
 

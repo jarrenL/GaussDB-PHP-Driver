@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$dsn = getenv('GAUSS_ODBC_DSN') ?: 'GaussDB507';
+$dsn = getenv('GAUSS_ODBC_DSN') ?: 'GaussDB';
 $connectionString = getenv('GAUSS_ODBC_CONNECTION_STRING');
 $pdoDsn = ($connectionString !== false && $connectionString !== '')
     ? "odbc:{$connectionString}"

@@ -31,7 +31,7 @@ GaussDB 当前官方驱动清单没有独立 PHP 驱动；官方开发指南明�
 
 ## 平台与实测结果
 
-服务端为本地 `GaussDB Kernel 507.0.0 build d791c80a`。2026-08-26 使用同一套 10 项兼容契约完成以下验证：
+使用与测试实例匹配的 GaussDB 官方 Unicode ODBC 驱动，并以同一套 10 项兼容契约完成以下验证：
 
 | 客户端 | PHP/架构 | M | A/ORA（O） |
 |---|---|---:|---:|
@@ -87,7 +87,7 @@ mode: CompatibilityMode::ORACLE
 
 ## 构建入口
 
-驱动二进制不提交到 Git。客户用已授权的 507 驱动总包提取并校验：
+驱动二进制不提交到 Git。客户使用与服务端版本、操作系统和 CPU 架构匹配的已授权驱动包提取并校验：
 
 ```bash
 make extract-odbc-arm64 GAUSSDB_DRIVER_ARCHIVE='/path/to/aarch64-driver.tar.gz'
@@ -109,7 +109,7 @@ make extract-windows-odbc GAUSSDB_DRIVER_ARCHIVE='/path/to/x86_64-driver.tar.gz'
 - `TIMESTAMP` 微秒、M `AUTO_INCREMENT/lastInsertId()`、M `TEXT` 65,535 字节限制属于服务端或 ODBC 语义边界，不能伪造为已兼容。
 - 仓库不重新分发 GaussDB 厂商二进制，客户必须从有授权的驱动包或官方渠道获取。
 
-详细边界见 [已知限制](KNOWN_LIMITATIONS.md)。早期 PDO_PGSQL 资料保留在 [`docs/legacy/`](docs/legacy/)，仅供追溯。
+详细边界见 [已知限制](KNOWN_LIMITATIONS.md)。
 
 ## 官方依据
 

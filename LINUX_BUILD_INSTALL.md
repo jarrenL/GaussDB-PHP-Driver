@@ -8,15 +8,15 @@
 - 本项目仓库。
 - PHP 8.1+；当前实测为 PHP 8.3。
 
-507 总包可以使用仓库脚本提取：
+官方驱动总包可以使用仓库脚本提取：
 
 ```bash
-./scripts/extract-gaussdb-507-linux-odbc.sh \
+./scripts/extract-gaussdb-linux-odbc.sh \
   '/secure/path/DBS-GaussDB-driver_aarch64_....tar.gz' \
   build/gaussdb-client/linux-arm64-odbc arm64
 ```
 
-x86_64 将最后两个参数改为 `linux-x86_64-odbc x86_64`。脚本会校验 `gsqlodbcw.so` 与配套 `libpq.so.5.5` 的 SHA-256，未知制品不会静默通过。
+x86_64 将最后两个参数改为 `linux-x86_64-odbc x86_64`。脚本会计算并记录 `gsqlodbcw.so` 与配套 `libpq.so.5.5` 的 SHA-256；生产交付可通过 `GAUSSDB_EXPECTED_ODBC_SHA256` 和 `GAUSSDB_EXPECTED_ODBC_LIBPQ_SHA256` 传入厂商公布或客户验收的期望值进行强校验。
 
 ## 2. 安装 PHP 和 unixODBC
 

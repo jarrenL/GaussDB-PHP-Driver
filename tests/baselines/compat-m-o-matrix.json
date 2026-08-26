@@ -1,7 +1,7 @@
 {
   "date": "2026-08-26",
-  "server": "GaussDB Kernel 507.0.0 build d791c80a",
-  "driver": "GaussDB 507 Unicode ODBC",
+  "server": "GaussDB test instance",
+  "driver": "version-matched GaussDB Unicode ODBC",
   "php": "8.3",
   "contract": "tests/php_compat_integration.php",
   "tests_per_target": 10,

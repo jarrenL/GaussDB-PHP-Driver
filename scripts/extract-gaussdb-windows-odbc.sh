@@ -11,17 +11,14 @@ driver_bundle=$1
 output_directory=$2
 script_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$script_directory/lib/extract-common.sh"
-package_series=${GAUSSDB_PACKAGE_SERIES:-507.0}
-release_version=${GAUSSDB_RELEASE_VERSION:-507.0.0}
-build_version=${GAUSSDB_BUILD_VERSION:-B071}
 require_file "$driver_bundle"
-temporary_directory=$(mktemp -d /tmp/gaussdb-507-windows-odbc.XXXXXX)
+temporary_directory=$(mktemp -d /tmp/gaussdb-windows-odbc.XXXXXX)
 trap 'rm -rf "$temporary_directory"' EXIT
 mkdir -p "$temporary_directory"/{top,mini,catalog}
 
 extract_tar "$driver_bundle" "$temporary_directory/top"
 mini_package=$(find_one "$temporary_directory/top" "GaussDB x86_64 mini package" \
-    -name "DBS-GaussDB-driver_${package_series}_*.mini.x86_64.*.tar.gz")
+    -name 'DBS-GaussDB-driver_*.mini.x86_64.*.tar.gz')
 extract_tar "$mini_package" "$temporary_directory/mini"
 
 catalog=$(find_one "$temporary_directory/mini" "Distributed ODBC catalog" \
@@ -33,21 +30,21 @@ mkdir -p "$output_directory"
 
 for bits in X64 X86; do
     case "$bits" in
-        X64) expected_sha256=${GAUSSDB_EXPECTED_ODBC_X64_SHA256:-5dd95b7c1cc3f28a9494d8e4acaa678496f5ec82d3730a2d5df6cd970c6af87e} ;;
-        X86) expected_sha256=${GAUSSDB_EXPECTED_ODBC_X86_SHA256:-0fc17a01570fbdcc34bd1d788e1cf36e16bd386723f1d9dfb637d93992e1a007} ;;
+        X64) expected_sha256=${GAUSSDB_EXPECTED_ODBC_X64_SHA256:-} ;;
+        X86) expected_sha256=${GAUSSDB_EXPECTED_ODBC_X86_SHA256:-} ;;
     esac
 
     wrapper=$(find_one "$temporary_directory/catalog" "Windows $bits ODBC wrapper" \
         -path '*/Euler2.10_X86_64/*' \
-        -name "GaussDB-Kernel_${release_version}.${build_version}_Odbc_Windows_${bits}_Distributed.tar.gz")
+        -name "GaussDB-Kernel_*_Odbc_Windows_${bits}_Distributed.tar.gz")
 
     mkdir -p "$temporary_directory/$bits/wrapper" "$temporary_directory/$bits/final"
     extract_tar "$wrapper" "$temporary_directory/$bits/wrapper"
     archive=$(find_one "$temporary_directory/$bits/wrapper" "Windows $bits ODBC archive" \
-        -name "GaussDB-Kernel_${release_version}_Windows_${bits}_Odbc.tar.gz")
+        -name "GaussDB-Kernel_*_Windows_${bits}_Odbc.tar.gz")
     extract_tar "$archive" "$temporary_directory/$bits/final"
 
-    actual_sha256=$(verify_sha256 "$temporary_directory/$bits/final/gsqlodbc.exe" "$expected_sha256")
+    actual_sha256=$(verify_sha256_if_expected "$temporary_directory/$bits/final/gsqlodbc.exe" "$expected_sha256")
 
     destination=$(printf '%s' "$bits" | tr '[:upper:]' '[:lower:]')
     mkdir -p "$output_directory/$destination"
@@ -55,4 +52,4 @@ for bits in X64 X86; do
     printf '%s  %s\n' "$actual_sha256" gsqlodbc.exe > "$output_directory/$destination/SHA256SUMS"
 done
 
-echo "Extracted and verified GaussDB 507 Windows X64/X86 ODBC installers to: $output_directory"
+echo "Extracted GaussDB Windows X64/X86 ODBC installers to: $output_directory"

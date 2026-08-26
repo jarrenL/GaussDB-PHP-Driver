@@ -1,6 +1,6 @@
 # Linux PDO_ODBC packaging
 
-Linux ARM64 和 x86_64 共用本构建定义。PHP 使用系统 `unixODBC`，实际数据库驱动使用与 GaussDB 507 配套的官方 `gsqlodbcw.so`；厂商二进制只从客户已有的驱动总包中提取，不提交到仓库。
+Linux ARM64 和 x86_64 共用本构建定义。PHP 使用系统 `unixODBC`，实际数据库驱动使用与服务端匹配的官方 `gsqlodbcw.so`；厂商二进制只从客户已有的驱动总包中提取，不提交到仓库。
 
 ```bash
 make extract-odbc-arm64 GAUSSDB_DRIVER_ARCHIVE='/path/to/aarch64-driver.tar.gz'

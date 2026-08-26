@@ -174,7 +174,7 @@ new ConnectionConfig(
     user: $user,
     password: $password,
     mode: CompatibilityMode::M,
-    dsn: 'GaussDB507',
+    dsn: 'GaussDB',
 )
 ```
 
@@ -197,7 +197,7 @@ php tests/php_compat_integration.php
 
 ## 10. 生产边界
 
-- 不依赖 `PDO::lastInsertId()`；M 本地 507 的 `AUTO_INCREMENT` 与 PDO/ODBC 语义不稳定。
+- 不依赖 `PDO::lastInsertId()`；M 模式的 `AUTO_INCREMENT` 与 PDO/ODBC 语义应以目标实例实测为准。
 - 当前只承诺时间戳秒级精度，不伪造已丢失的微秒。
 - M `TEXT` 本地实测 65,535 字节成功，65,536 字节返回 `22001`。
 - ODBC 用户自定义类型、部分存储过程 OUT 参数等限制仍然存在。

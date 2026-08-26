@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 try {
     $parameters = @{
-        Name = 'GaussDB507'
+        Name = 'GaussDB'
         DriverName = 'GaussDB Unicode'
         Server = '192.168.64.1'
         Port = 15432

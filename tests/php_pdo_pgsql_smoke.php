@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$host = getenv('GAUSS_HOST') ?: 'gaussdb-507';
+$host = getenv('GAUSS_HOST') ?: 'gaussdb';
 $port = getenv('GAUSS_PORT') ?: '5432';
 $database = getenv('GAUSS_DATABASE') ?: 'gdbdrv_m_test';
 $user = getenv('GAUSS_USER') ?: 'gauss_php_test';

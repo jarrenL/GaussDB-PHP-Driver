@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-image=${GAUSSDB_IMAGE:-gaussdb507-arm64:507.0.0}
-volume=${GAUSSDB_DATA_VOLUME:-gaussdb507-data}
+image=${GAUSSDB_IMAGE:-gaussdb:local}
+volume=${GAUSSDB_DATA_VOLUME:-gaussdb-data}
 platform=${GAUSSDB_PLATFORM:-linux/arm64}
 
 docker image inspect "$image" >/dev/null || {

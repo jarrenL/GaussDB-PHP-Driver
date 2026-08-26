@@ -1,7 +1,7 @@
 param(
     [string]$PhpPath = 'C:\GaussDBTest\php-8.3.8-x64\php.exe',
     [string]$TestPath = 'C:\GaussDBTest\php_pdo_odbc_smoke.php',
-    [string]$Dsn = 'GaussDB507',
+    [string]$Dsn = 'GaussDB',
     [string]$ConnectionString = $env:GAUSS_ODBC_CONNECTION_STRING,
     [string]$ConnectionStringFile = 'C:\Windows\Temp\gauss-connection-string.txt',
     [string]$User = 'gauss_php_test',
