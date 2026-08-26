@@ -4,11 +4,19 @@ declare(strict_types=1);
 
 namespace GaussDb\Compat;
 
-enum ResultType: string
+final class ResultType
 {
     /** GaussDB ODBC exposes VARBINARY/BLOB values as hexadecimal text. */
-    case BINARY_HEX = 'binary_hex';
+    const BINARY_HEX = 'binary_hex';
 
     /** Normalize M BOOLEAN or ORA NUMBER(1) 0/1 values to PHP bool. */
-    case BOOLEAN = 'boolean';
+    const BOOLEAN = 'boolean';
+
+    public static function validate(string $type): string
+    {
+        if ($type !== self::BINARY_HEX && $type !== self::BOOLEAN) {
+            throw new \InvalidArgumentException("Unsupported GaussDB result type: {$type}");
+        }
+        return $type;
+    }
 }

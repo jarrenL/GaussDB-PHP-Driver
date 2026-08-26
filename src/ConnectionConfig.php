@@ -6,19 +6,30 @@ namespace GaussDb\Compat;
 
 use InvalidArgumentException;
 
-final readonly class ConnectionConfig
+final class ConnectionConfig
 {
+    /** @var string */ public $host;
+    /** @var int */ public $port;
+    /** @var string */ public $database;
+    /** @var string */ public $user;
+    /** @var string */ public $password;
+    /** @var string */ public $mode;
+    /** @var string */ public $driver;
+    /** @var string */ public $sslMode;
+    /** @var string|null */ public $dsn;
+    /** @var array */ public $pdoOptions;
+
     public function __construct(
-        public string $host,
-        public int $port,
-        public string $database,
-        public string $user,
-        public string $password,
-        public CompatibilityMode $mode,
-        public string $driver = 'GaussDB Unicode',
-        public string $sslMode = 'prefer',
-        public ?string $dsn = null,
-        public array $pdoOptions = [],
+        string $host,
+        int $port,
+        string $database,
+        string $user,
+        string $password,
+        string $mode,
+        string $driver = 'GaussDB Unicode',
+        string $sslMode = 'prefer',
+        ?string $dsn = null,
+        array $pdoOptions = array()
     ) {
         if ($host === '' || $database === '' || $user === '') {
             throw new InvalidArgumentException('Host, database, and user must not be empty');
@@ -26,12 +37,22 @@ final readonly class ConnectionConfig
         if ($port < 1 || $port > 65535) {
             throw new InvalidArgumentException("Invalid port: {$port}");
         }
+        $this->host = $host;
+        $this->port = $port;
+        $this->database = $database;
+        $this->user = $user;
+        $this->password = $password;
+        $this->mode = CompatibilityMode::fromName($mode);
+        $this->driver = $driver;
+        $this->sslMode = $sslMode;
+        $this->dsn = $dsn;
+        $this->pdoOptions = $pdoOptions;
     }
 
     public function pdoDsn(): string
     {
         if ($this->dsn !== null && $this->dsn !== '') {
-            return str_starts_with($this->dsn, 'odbc:') ? $this->dsn : 'odbc:' . $this->dsn;
+            return strncmp($this->dsn, 'odbc:', 5) === 0 ? $this->dsn : 'odbc:' . $this->dsn;
         }
 
         $parts = [
@@ -50,7 +71,7 @@ final readonly class ConnectionConfig
 
     private static function odbcScalar(string $value): string
     {
-        if (str_contains($value, ';') || str_contains($value, "\0")) {
+        if (strpos($value, ';') !== false || strpos($value, "\0") !== false) {
             throw new InvalidArgumentException('ODBC connection values must not contain semicolons or NUL bytes');
         }
         return $value;

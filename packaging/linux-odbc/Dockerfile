@@ -1,9 +1,15 @@
-FROM php:8.3-cli-bookworm
+ARG PHP_BASE_IMAGE=php:8.3-cli-bookworm
+FROM ${PHP_BASE_IMAGE}
 
 ARG CLIENT_ARCH
+ARG USE_DEBIAN_ARCHIVE=0
 COPY build/gaussdb-client/linux-${CLIENT_ARCH}-odbc/ /opt/gaussdb-odbc/
 
-RUN apt-get update \
+RUN if [ "$USE_DEBIAN_ARCHIVE" = 1 ]; then \
+        printf '%s\n' 'deb http://archive.debian.org/debian buster main' > /etc/apt/sources.list; \
+        printf '%s\n' 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archive; \
+    fi \
+    && apt-get update \
     && apt-get install -y --no-install-recommends odbcinst patchelf unixodbc unixodbc-dev \
     && docker-php-ext-configure pdo_odbc --with-pdo-odbc=unixODBC,/usr \
     && docker-php-ext-install -j2 pdo_odbc \

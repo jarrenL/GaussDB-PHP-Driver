@@ -6,26 +6,32 @@ namespace GaussDb\Compat;
 
 use InvalidArgumentException;
 
-enum CompatibilityMode: string
+final class CompatibilityMode
 {
-    case M = 'M';
-    case ORACLE = 'ORA';
+    const M = 'M';
+    const ORACLE = 'ORA';
 
-    public static function fromName(string $mode): self
+    public static function fromName(string $mode): string
     {
-        return match (strtoupper(trim($mode))) {
-            'M' => self::M,
-            'A', 'O', 'ORA', 'ORACLE' => self::ORACLE,
-            default => throw new InvalidArgumentException("Unsupported GaussDB compatibility mode: {$mode}"),
-        };
+        $normalized = strtoupper(trim($mode));
+        if ($normalized === 'M') {
+            return self::M;
+        }
+        if (in_array($normalized, array('A', 'O', 'ORA', 'ORACLE'), true)) {
+            return self::ORACLE;
+        }
+        throw new InvalidArgumentException("Unsupported GaussDB compatibility mode: {$mode}");
     }
 
-    public function matchesDatabaseValue(string $value): bool
+    public static function matchesDatabaseValue(string $mode, string $value): bool
     {
         $actual = strtoupper(trim($value));
-        return match ($this) {
-            self::M => $actual === 'M',
-            self::ORACLE => in_array($actual, ['A', 'O', 'ORA', 'ORACLE'], true),
-        };
+        if ($mode === self::M) {
+            return $actual === 'M';
+        }
+        if ($mode === self::ORACLE) {
+            return in_array($actual, array('A', 'O', 'ORA', 'ORACLE'), true);
+        }
+        return false;
     }
 }

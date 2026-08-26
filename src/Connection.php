@@ -9,10 +9,16 @@ use RuntimeException;
 
 final class Connection
 {
-    public function __construct(
-        private readonly PDO $pdo,
-        public readonly CompatibilityMode $mode,
-    ) {
+    /** @var PDO */
+    private $pdo;
+
+    /** @var string */
+    public $mode;
+
+    public function __construct(PDO $pdo, string $mode)
+    {
+        $this->pdo = $pdo;
+        $this->mode = CompatibilityMode::fromName($mode);
     }
 
     public function prepare(string $sql, array $resultTypes = []): Statement
@@ -79,10 +85,10 @@ final class Connection
             throw new RuntimeException('Unable to query GaussDB compatibility mode');
         }
         $actual = $statement->fetchColumn();
-        if (!is_string($actual) || !$this->mode->matchesDatabaseValue($actual)) {
-            $shown = is_scalar($actual) ? (string) $actual : get_debug_type($actual);
+        if (!is_string($actual) || !CompatibilityMode::matchesDatabaseValue($this->mode, $actual)) {
+            $shown = is_scalar($actual) ? (string) $actual : gettype($actual);
             throw new RuntimeException(
-                "Connected database compatibility mode is {$shown}; expected {$this->mode->value}"
+                "Connected database compatibility mode is {$shown}; expected {$this->mode}"
             );
         }
     }

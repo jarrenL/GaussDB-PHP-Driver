@@ -52,12 +52,12 @@ if ($password === false || $password === '') {
 }
 
 $db = Driver::connect(new ConnectionConfig(
-    host: getenv('GAUSS_HOST') ?: 'gaussdb.example.com',
-    port: (int) (getenv('GAUSS_PORT') ?: 5432),
-    database: getenv('GAUSS_DATABASE') ?: 'app_m',
-    user: getenv('GAUSS_USER') ?: 'app_user',
-    password: $password,
-    mode: CompatibilityMode::M,
+    getenv('GAUSS_HOST') ?: 'gaussdb.example.com',
+    (int) (getenv('GAUSS_PORT') ?: 5432),
+    getenv('GAUSS_DATABASE') ?: 'app_m',
+    getenv('GAUSS_USER') ?: 'app_user',
+    $password,
+    CompatibilityMode::M
 ));
 
 $statement = $db->execute('SELECT id, name FROM users WHERE id = ?', [1]);
@@ -70,15 +70,11 @@ $row = $statement->fetch();
 
 GaussDB 官方名称是 A/ORA。本项目也接受字符串别名 `O`：
 
-```php
-mode: CompatibilityMode::ORACLE
-```
+将 `ConnectionConfig` 第六个参数改为 `CompatibilityMode::ORACLE`。
 
 或从配置读取：
 
-```php
-mode: CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'O')
-```
+也可以把第六个参数写为 `CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'O')`。
 
 其他连接代码与 M 相同。连接到非 ORA 数据库时会拒绝继续运行。
 
@@ -89,7 +85,7 @@ mode: CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'O')
 ```php
 $db->execute(
     'INSERT INTO feature_flags (id, enabled) VALUES (?, ?)',
-    [1, true],
+    [1, true]
 );
 ```
 
@@ -104,7 +100,7 @@ use GaussDb\Compat\ResultType;
 $bytes = "A\x00B\xFFZ";
 $db->execute(
     'INSERT INTO files (id, payload) VALUES (?, ?)',
-    [1, new BinaryValue($bytes)],
+    [1, new BinaryValue($bytes)]
 );
 
 $row = $db->execute(
@@ -146,7 +142,7 @@ try {
 
 ## 7. Windows 安装概要
 
-1. 安装 PHP 8.3 NTS，并启用 `extension=pdo_odbc`。
+1. 安装 PHP 7.2.34+，并启用与该 PHP 版本匹配的 `PDO_ODBC`；Windows 推荐使用 NTS 包。
 2. 安装匹配位数的 GaussDB ODBC；PHP x64 对应 ODBC x64，PHP x86 对应 ODBC x86。
 3. 优先使用 `GaussDB Unicode` 驱动。
 4. 将本仓库放到服务器并加载 `src/autoload.php`。
@@ -168,13 +164,15 @@ ByteaAsLongVarBinary=1
 
 ```php
 new ConnectionConfig(
-    host: 'unused',
-    port: 5432,
-    database: 'app_m',
-    user: $user,
-    password: $password,
-    mode: CompatibilityMode::M,
-    dsn: 'GaussDB',
+    'unused',
+    5432,
+    'app_m',
+    $user,
+    $password,
+    CompatibilityMode::M,
+    'GaussDB Unicode',
+    'prefer',
+    'GaussDB'
 )
 ```
 

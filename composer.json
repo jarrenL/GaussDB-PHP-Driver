@@ -4,7 +4,7 @@
   "type": "library",
   "license": "Apache-2.0",
   "require": {
-    "php": ">=8.1",
+    "php": ">=7.2.34",
     "ext-pdo": "*",
     "ext-pdo_odbc": "*"
   },

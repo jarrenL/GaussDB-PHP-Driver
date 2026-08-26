@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace GaussDb\Compat;
 
-final readonly class BinaryValue
+final class BinaryValue
 {
-    public function __construct(public string $bytes)
+    /** @var string */
+    public $bytes;
+
+    public function __construct(string $bytes)
     {
+        $this->bytes = $bytes;
     }
 }

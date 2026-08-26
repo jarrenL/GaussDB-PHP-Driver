@@ -6,7 +6,7 @@
 
 - 与服务端版本、部署形态、Linux 发行版和 CPU 架构匹配的 GaussDB 官方 ODBC 包。
 - 本项目仓库。
-- PHP 8.1+；当前实测为 PHP 8.3。
+- PHP 7.2.34+；当前实测为 PHP 7.2.34 和 PHP 8.3。
 
 官方驱动总包可以使用仓库脚本提取：
 
@@ -23,7 +23,7 @@ x86_64 将最后两个参数改为 `linux-x86_64-odbc x86_64`。脚本会计算�
 发行版包名可能不同。常见示例：
 
 ```bash
-# Debian/Ubuntu
+# Debian/Ubuntu（包名按发行版实际 PHP 版本调整）
 sudo apt-get install php8.3-cli php8.3-odbc unixodbc patchelf
 
 # RHEL/openEuler/HCE 系列
@@ -38,6 +38,8 @@ odbcinst -j
 ```
 
 输出必须包含 `pdo_odbc=true` 和 PDO 驱动 `odbc`。若发行版 PHP 没有 PDO_ODBC，再使用与当前 PHP 完全匹配的 PHP 源码编译官方 `ext/pdo_odbc`；不需要 PDO_PGSQL。
+
+PHP 7.2.34 已停止官方安全维护。存量系统可以使用本兼容层，但生产环境应设置隔离和升级计划；不要把“驱动兼容”理解为 PHP 运行时仍受官方安全支持。
 
 ## 3. 安装 GaussDB ODBC
 

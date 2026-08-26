@@ -40,10 +40,10 @@ $env:GAUSS_PASSWORD = '<password>'
   -User 'app_user'
 ```
 
-脚本默认使用 `C:\GaussDBTest\php-8.3.8-x64\php.exe`。测试 x86 时传入对应 32 位 PHP 路径；PHP、PDO_ODBC 和 GaussDB ODBC 位数必须一致。
+脚本默认使用项目测试机上的 PHP 8.3 x64 路径。PHP 7.2.34 或 x86 测试通过 `-PhpPath` 传入对应路径；PHP、PDO_ODBC 和 GaussDB ODBC 位数必须一致。
 
 ## 本次基线
 
-2026-08-26 的正式结果见 `baselines/compat-m-o-matrix.json`：Linux ARM64/x86_64、Windows AMD64/i586 的 M 与 A/ORA 共 8 个目标，合计 80/80 通过。
+正式结果见 `baselines/compat-m-o-matrix.json`：PHP 7.2.34/8.3、Linux ARM64/x86_64、Windows AMD64/i586 的 M 与 A/ORA 共 16 个目标，合计 160/160 通过。
 
 旧 `php_pdo_contract.php` 及四份早期原始行为结果仍保留，用于回归对比和解释兼容层修复前的差异，不作为当前正式通过标准。

@@ -9,6 +9,13 @@ Windows x64/x86 均使用 PHP PDO_ODBC + GaussDB 官方 Unicode ODBC + 本仓库
 ```powershell
 ./setup-php.ps1
 
+# PHP 7.2.34 x64 示例；x86 时同时替换压缩包、目录和 ExpectedArchitecture
+./setup-php.ps1 `
+  -Archive 'C:\Windows\Temp\php-7.2.34-nts-Win32-VC15-x64.zip' `
+  -PhpHome 'C:\GaussDBTest\php-7.2.34-x64' `
+  -StatusFile 'C:\GaussDBTest\php-setup-7.2.34-x64.txt' `
+  -ExpectedArchitecture x64
+
 ./install-side-by-side.ps1 `
   -X86InstallerPath C:\path\to\x86\gsqlodbc.exe `
   -X64InstallerPath C:\path\to\x64\gsqlodbc.exe
@@ -43,6 +50,7 @@ require 'C:\\GaussDBTest\\GaussDB-PHP-Driver\\src\\autoload.php';
 ```powershell
 $env:GAUSS_PASSWORD = '<password>'
 ./tests/run-windows-compat-matrix.ps1 `
+  -PhpPath 'C:\GaussDBTest\php-7.2.34-x64\php.exe' `
   -RepositoryPath 'C:\GaussDBTest\GaussDB-PHP-Driver' `
   -Server 'gaussdb.example.com' `
   -MDatabase 'app_m' `
@@ -50,6 +58,6 @@ $env:GAUSS_PASSWORD = '<password>'
   -User 'app_user'
 ```
 
-2026-08-26 已在 UTM Windows 11 中完成 PHP 8.3.8 AMD64/i586 的 M/O 验证，四个目标各 10/10 通过。UTF-8 中文/emoji 与含 NUL 二进制均通过。
+已在 UTM Windows 11 中完成 PHP 7.2.34 和 PHP 8.3 AMD64/i586 的 M/O 验证，各目标均为 10/10。UTF-8 中文/emoji 与含 NUL 二进制均通过。
 
 密码只通过进程环境或权限受控文件传入，不写入脚本和仓库。

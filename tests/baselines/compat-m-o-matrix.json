@@ -2,7 +2,7 @@
   "date": "2026-08-26",
   "server": "GaussDB test instance",
   "driver": "version-matched GaussDB Unicode ODBC",
-  "php": "8.3",
+  "php_versions": ["7.2.34", "8.3"],
   "contract": "tests/php_compat_integration.php",
   "tests_per_target": 10,
   "scenarios": [
@@ -18,14 +18,22 @@
     "duplicate-key SQLSTATE and connection recovery"
   ],
   "targets": [
-    {"os": "Linux", "architecture": "aarch64", "mode": "M", "pass": 10, "fail": 0},
-    {"os": "Linux", "architecture": "aarch64", "mode": "ORA", "pass": 10, "fail": 0},
-    {"os": "Linux", "architecture": "x86_64", "mode": "M", "pass": 10, "fail": 0},
-    {"os": "Linux", "architecture": "x86_64", "mode": "ORA", "pass": 10, "fail": 0},
-    {"os": "Windows 11", "architecture": "AMD64", "mode": "M", "pass": 10, "fail": 0},
-    {"os": "Windows 11", "architecture": "AMD64", "mode": "ORA", "pass": 10, "fail": 0},
-    {"os": "Windows 11", "architecture": "i586", "mode": "M", "pass": 10, "fail": 0},
-    {"os": "Windows 11", "architecture": "i586", "mode": "ORA", "pass": 10, "fail": 0}
+    {"php": "7.2.34", "os": "Linux", "architecture": "aarch64", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Linux", "architecture": "aarch64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Linux", "architecture": "x86_64", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Linux", "architecture": "x86_64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Windows 11", "architecture": "AMD64", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Windows 11", "architecture": "AMD64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Windows 11", "architecture": "i586", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "7.2.34", "os": "Windows 11", "architecture": "i586", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Linux", "architecture": "aarch64", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Linux", "architecture": "aarch64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Linux", "architecture": "x86_64", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Linux", "architecture": "x86_64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Windows 11", "architecture": "AMD64", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Windows 11", "architecture": "AMD64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Windows 11", "architecture": "i586", "mode": "M", "pass": 10, "fail": 0},
+    {"php": "8.3", "os": "Windows 11", "architecture": "i586", "mode": "ORA", "pass": 10, "fail": 0}
   ],
-  "summary": {"pass": 80, "fail": 0}
+  "summary": {"pass": 160, "fail": 0}
 }

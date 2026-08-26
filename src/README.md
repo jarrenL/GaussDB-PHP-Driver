@@ -8,3 +8,4 @@
 - `Statement`：统一布尔参数为 `0/1`，支持二进制 LOB 参数，并按显式列映射解码 ODBC 返回的十六进制二进制值。
 
 代码遵循 PSR-4，可通过 Composer 加载；没有 Composer 时也可以直接引用 `src/autoload.php`。
+最低支持 PHP 7.2.34，并持续兼容 PHP 8.x。

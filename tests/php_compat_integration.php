@@ -29,12 +29,12 @@ function check(bool $condition, string $message): void
 $mode = CompatibilityMode::fromName(requiredEnv('GAUSS_MODE'));
 $database = requiredEnv('GAUSS_DATABASE');
 $connection = Driver::connect(new ConnectionConfig(
-    host: getenv('GAUSS_HOST') ?: 'host.docker.internal',
-    port: (int) (getenv('GAUSS_PORT') ?: 5432),
-    database: $database,
-    user: requiredEnv('GAUSS_USER'),
-    password: requiredEnv('GAUSS_PASSWORD'),
-    mode: $mode,
+    getenv('GAUSS_HOST') ?: 'host.docker.internal',
+    (int) (getenv('GAUSS_PORT') ?: 5432),
+    $database,
+    requiredEnv('GAUSS_USER'),
+    requiredEnv('GAUSS_PASSWORD'),
+    $mode
 ));
 
 $suffix = substr(hash('sha256', $database . ':' . bin2hex(random_bytes(8))), 0, 12);
@@ -42,15 +42,15 @@ $table = 'php_compat_' . $suffix;
 $tests = [];
 
 $run = static function (string $name, callable $test) use (&$tests): void {
-    $started = hrtime(true);
+    $started = microtime(true);
     try {
         $detail = $test();
-        $tests[] = ['name' => $name, 'status' => 'pass', 'duration_ms' => round((hrtime(true) - $started) / 1_000_000, 3), 'detail' => $detail];
+        $tests[] = ['name' => $name, 'status' => 'pass', 'duration_ms' => round((microtime(true) - $started) * 1000, 3), 'detail' => $detail];
     } catch (Throwable $error) {
         $tests[] = [
             'name' => $name,
             'status' => 'fail',
-            'duration_ms' => round((hrtime(true) - $started) / 1_000_000, 3),
+            'duration_ms' => round((microtime(true) - $started) * 1000, 3),
             'detail' => ['exception' => get_class($error), 'sqlstate' => (string) $error->getCode(), 'message' => $error->getMessage()],
         ];
     }
@@ -83,12 +83,12 @@ try {
     $run('prepared CRUD and scalar types', static function () use ($connection, $table): array {
         $connection->execute(
             "INSERT INTO {$table} (id, name, amount, enabled, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            [1, 'basic', '1234567890123456.7890', true, null, '2026-08-26 12:34:56'],
+            [1, 'basic', '1234567890123456.7890', true, null, '2026-08-26 12:34:56']
         );
         $row = $connection->execute(
             "SELECT id, name, amount, enabled, note, created_at FROM {$table} WHERE id = ?",
             [1],
-            ['enabled' => ResultType::BOOLEAN],
+            ['enabled' => ResultType::BOOLEAN]
         )->fetch();
         check(is_array($row), 'Inserted row was not returned');
         check((string) $row['id'] === '1', 'Integer value changed');
@@ -98,12 +98,12 @@ try {
 
         $connection->execute(
             "INSERT INTO {$table} (id, name, enabled) VALUES (?, ?, ?)",
-            [6, 'false-value', false],
+            [6, 'false-value', false]
         );
         $disabled = $connection->execute(
             "SELECT enabled FROM {$table} WHERE id = ?",
             [6],
-            [0 => ResultType::BOOLEAN],
+            [0 => ResultType::BOOLEAN]
         )->fetchColumn();
         check($disabled === false, 'Boolean false was not normalized');
         return $row;
@@ -120,12 +120,12 @@ try {
         $value = "A\x00B\xFFZ";
         $connection->execute(
             "INSERT INTO {$table} (id, name, payload) VALUES (?, ?, ?)",
-            [3, 'binary', new BinaryValue($value)],
+            [3, 'binary', new BinaryValue($value)]
         );
         $actual = $connection->execute(
             "SELECT payload FROM {$table} WHERE id = ?",
             [3],
-            [0 => ResultType::BINARY_HEX],
+            [0 => ResultType::BINARY_HEX]
         )->fetchColumn();
         check($actual === $value, 'Binary value changed');
         return ['bytes' => strlen($actual), 'sha256' => hash('sha256', $actual)];
@@ -151,14 +151,14 @@ try {
     $run('named parameters and mapped fetchAll', static function () use ($connection, $table): void {
         $name = $connection->execute(
             "SELECT name FROM {$table} WHERE id = :id",
-            ['id' => 1],
+            ['id' => 1]
         )->fetchColumn();
         check($name === 'basic', 'Named parameter returned the wrong row');
 
         $rows = $connection->execute(
             "SELECT id, enabled FROM {$table} WHERE id IN (?, ?) ORDER BY id",
             [1, 6],
-            ['enabled' => ResultType::BOOLEAN],
+            ['enabled' => ResultType::BOOLEAN]
         )->fetchAll();
         check(count($rows) === 2, 'Mapped fetchAll returned the wrong row count');
         check($rows[0]['enabled'] === true && $rows[1]['enabled'] === false, 'Mapped fetchAll boolean values changed');
@@ -220,9 +220,14 @@ try {
     $connection->exec("DROP TABLE IF EXISTS {$table}");
 }
 
-$failed = count(array_filter($tests, static fn (array $test): bool => $test['status'] === 'fail'));
+$failed = 0;
+foreach ($tests as $test) {
+    if ($test['status'] === 'fail') {
+        ++$failed;
+    }
+}
 echo json_encode([
-    'mode' => $mode->value,
+    'mode' => $mode,
     'database' => $database,
     'php' => PHP_VERSION,
     'architecture' => php_uname('m'),

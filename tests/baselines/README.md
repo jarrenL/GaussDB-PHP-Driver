@@ -1,6 +1,6 @@
 # Tracked test baselines
 
-`compat-m-o-matrix.json` 是当前正式兼容层基线：与测试实例匹配的 GaussDB 官方 Unicode ODBC + PDO_ODBC，在 Linux ARM64/x86_64、Windows x64/x86 的 M 与 A/ORA 模式上合计 80/80 通过。
+`compat-m-o-matrix.json` 是当前正式兼容层基线：与测试实例匹配的 GaussDB 官方 Unicode ODBC + PDO_ODBC，在 PHP 7.2.34/8.3、Linux ARM64/x86_64、Windows x64/x86 的 M 与 A/ORA 模式上合计 160/160 通过。
 
 其余 `linux-*.json` 和 `windows-*.json` 是早期 PDO_PGSQL/PDO_ODBC 原始行为表征，保留用于说明兼容层修复前的差异，不代表当前正式结果。
 

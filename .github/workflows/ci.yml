@@ -40,7 +40,7 @@ jobs:
           bash -n tests/run-linux-special-contract.sh
           bash -n tests/modes/run-local-mode-matrix.sh
       - name: Validate PHP files
-        run: make lint
+        run: make lint lint-php72 test-compat-unit-php72
       - name: Validate tracked JSON baselines
         run: php -r 'foreach (glob("tests/baselines/*.json") as $file) { json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR); echo "$file OK\n"; }'
       - name: Parse PowerShell files

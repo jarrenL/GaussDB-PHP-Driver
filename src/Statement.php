@@ -10,12 +10,21 @@ use UnexpectedValueException;
 
 final class Statement
 {
-    /** @param array<int|string, ResultType|string> $resultTypes */
-    public function __construct(
-        private readonly PDOStatement $statement,
-        private readonly CompatibilityMode $mode,
-        private readonly array $resultTypes = [],
-    ) {
+    /** @var PDOStatement */
+    private $statement;
+
+    /** @var string */
+    private $mode;
+
+    /** @var array<int|string, string> */
+    private $resultTypes;
+
+    /** @param array<int|string, string> $resultTypes */
+    public function __construct(PDOStatement $statement, string $mode, array $resultTypes = array())
+    {
+        $this->statement = $statement;
+        $this->mode = CompatibilityMode::fromName($mode);
+        $this->resultTypes = $resultTypes;
     }
 
     public function execute(array $parameters = []): bool
@@ -23,14 +32,15 @@ final class Statement
         foreach ($parameters as $key => $value) {
             $parameter = is_int($key)
                 ? $key + 1
-                : (str_starts_with((string) $key, ':') ? (string) $key : ':' . $key);
+                : (strncmp((string) $key, ':', 1) === 0 ? (string) $key : ':' . $key);
             [$normalized, $pdoType] = $this->normalizeParameter($value);
             $this->statement->bindValue($parameter, $normalized, $pdoType);
         }
         return $this->statement->execute();
     }
 
-    public function bindValue(int|string $parameter, mixed $value, int $type = PDO::PARAM_STR): bool
+    /** @param int|string $parameter @param mixed $value */
+    public function bindValue($parameter, $value, int $type = PDO::PARAM_STR): bool
     {
         if ($value instanceof BinaryValue || is_bool($value)) {
             [$value, $type] = $this->normalizeParameter($value);
@@ -38,9 +48,10 @@ final class Statement
         return $this->statement->bindValue($parameter, $value, $type);
     }
 
-    public function fetch(int $mode = PDO::FETCH_DEFAULT): mixed
+    /** @param int|null $mode @return mixed */
+    public function fetch($mode = null)
     {
-        $row = $this->statement->fetch($mode);
+        $row = $mode === null ? $this->statement->fetch() : $this->statement->fetch($mode);
         if (is_array($row)) {
             return $this->normalizeRow($row);
         }
@@ -50,9 +61,10 @@ final class Statement
         return $row;
     }
 
-    public function fetchAll(int $mode = PDO::FETCH_DEFAULT): array
+    /** @param int|null $mode */
+    public function fetchAll($mode = null): array
     {
-        $rows = $this->statement->fetchAll($mode);
+        $rows = $mode === null ? $this->statement->fetchAll() : $this->statement->fetchAll($mode);
         foreach ($rows as $index => $row) {
             if (is_array($row)) {
                 $rows[$index] = $this->normalizeRow($row);
@@ -63,7 +75,8 @@ final class Statement
         return $rows;
     }
 
-    public function fetchColumn(int $column = 0): mixed
+    /** @return mixed */
+    public function fetchColumn(int $column = 0)
     {
         $value = $this->statement->fetchColumn($column);
         $type = $this->resultTypes[$column] ?? null;
@@ -90,19 +103,28 @@ final class Statement
         return $this->statement;
     }
 
-    private function normalizeParameter(mixed $value): array
+    /** @param mixed $value */
+    private function normalizeParameter($value): array
     {
-        return match (true) {
-            $value instanceof BinaryValue && $this->mode === CompatibilityMode::ORACLE => [
+        if ($value instanceof BinaryValue && $this->mode === CompatibilityMode::ORACLE) {
+            return array(
                 strtoupper(bin2hex($value->bytes)),
-                PDO::PARAM_STR,
-            ],
-            $value instanceof BinaryValue => [$value->bytes, PDO::PARAM_LOB],
-            is_bool($value) => [$value ? 1 : 0, PDO::PARAM_INT],
-            is_int($value) => [$value, PDO::PARAM_INT],
-            $value === null => [null, PDO::PARAM_NULL],
-            default => [$value, PDO::PARAM_STR],
-        };
+                PDO::PARAM_STR
+            );
+        }
+        if ($value instanceof BinaryValue) {
+            return array($value->bytes, PDO::PARAM_LOB);
+        }
+        if (is_bool($value)) {
+            return array($value ? 1 : 0, PDO::PARAM_INT);
+        }
+        if (is_int($value)) {
+            return array($value, PDO::PARAM_INT);
+        }
+        if ($value === null) {
+            return array(null, PDO::PARAM_NULL);
+        }
+        return array($value, PDO::PARAM_STR);
     }
 
     private function normalizeRow(array $row): array
@@ -115,16 +137,18 @@ final class Statement
         return $row;
     }
 
-    private static function normalizeResult(mixed $value, ResultType|string $type): mixed
+    /** @param mixed $value @return mixed */
+    private static function normalizeResult($value, string $type)
     {
-        $type = is_string($type) ? ResultType::from($type) : $type;
-        return match ($type) {
-            ResultType::BOOLEAN => self::toBoolean($value),
-            ResultType::BINARY_HEX => self::decodeHexBinary($value),
-        };
+        $type = ResultType::validate($type);
+        if ($type === ResultType::BOOLEAN) {
+            return self::toBoolean($value);
+        }
+        return self::decodeHexBinary($value);
     }
 
-    private static function toBoolean(mixed $value): bool
+    /** @param mixed $value */
+    private static function toBoolean($value): bool
     {
         if (in_array($value, [true, 1, '1', 't', 'true', 'TRUE'], true)) {
             return true;
@@ -135,7 +159,8 @@ final class Statement
         throw new UnexpectedValueException('GaussDB boolean result is not a recognized 0/1 value');
     }
 
-    private static function decodeHexBinary(mixed $value): string
+    /** @param mixed $value */
+    private static function decodeHexBinary($value): string
     {
         if (is_resource($value)) {
             $value = stream_get_contents($value);
@@ -143,7 +168,7 @@ final class Statement
         if (!is_string($value)) {
             throw new UnexpectedValueException('GaussDB binary result is not string or stream data');
         }
-        if (str_starts_with($value, '\\x')) {
+        if (strncmp($value, '\\x', 2) === 0) {
             $value = substr($value, 2);
         }
         if ($value === '') {

@@ -23,6 +23,7 @@ user=${GAUSS_USER:-gauss_php_test}
 m_database=${GAUSS_M_DATABASE:-gdbdrv_m_test}
 o_database=${GAUSS_O_DATABASE:-gdbdrv_a_test}
 result_directory=${GAUSS_RESULT_DIRECTORY:-build/test-results}
+result_prefix=${GAUSS_RESULT_PREFIX:-compat}
 mkdir -p "$result_directory"
 
 for target in "M:$m_database" "O:$o_database"; do
@@ -37,7 +38,7 @@ for target in "M:$m_database" "O:$o_database"; do
         -e GAUSS_USER="$user" \
         -e GAUSS_PASSWORD \
         "$image" php tests/php_compat_integration.php \
-        > "$result_directory/compat-linux-$architecture-$mode.json"
+        > "$result_directory/$result_prefix-linux-$architecture-$mode.json"
 done
 
 echo "M/O compatibility matrix passed for Linux $architecture"

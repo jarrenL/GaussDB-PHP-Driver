@@ -26,7 +26,7 @@ final class Driver
             $config->pdoDsn(),
             $config->user,
             $config->password,
-            $options,
+            $options
         );
 
         $connection = new Connection($pdo, $config->mode);

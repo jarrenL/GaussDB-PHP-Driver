@@ -35,18 +35,22 @@ GaussDB 当前官方驱动清单没有独立 PHP 驱动；官方开发指南明�
 
 | 客户端 | PHP/架构 | M | A/ORA（O） |
 |---|---|---:|---:|
+| Linux | PHP 7.2.34 ARM64 | 10/10 | 10/10 |
+| Linux | PHP 7.2.34 x86_64 | 10/10 | 10/10 |
+| Windows 11 UTM | PHP 7.2.34 AMD64 | 10/10 | 10/10 |
+| Windows 11 UTM | PHP 7.2.34 i586 | 10/10 | 10/10 |
 | Linux | PHP 8.3 ARM64 | 10/10 | 10/10 |
 | Linux | PHP 8.3 x86_64 | 10/10 | 10/10 |
 | Windows 11 UTM | PHP 8.3.8 AMD64 | 10/10 | 10/10 |
 | Windows 11 UTM | PHP 8.3.8 i586 | 10/10 | 10/10 |
 
-合计 **80/80 通过**。覆盖预处理 CRUD、DECIMAL、NULL、布尔、中文/emoji、含 NUL 与 `0xFF` 的二进制、SQL 注入防护、命名参数、结果映射、语句复用、增删改行数、事务、保存点、重复键 SQLSTATE 和异常后连接恢复。基线见 [`tests/baselines/compat-m-o-matrix.json`](tests/baselines/compat-m-o-matrix.json)。
+合计 **160/160 通过**。覆盖预处理 CRUD、DECIMAL、NULL、布尔、中文/emoji、含 NUL 与 `0xFF` 的二进制、SQL 注入防护、命名参数、结果映射、语句复用、增删改行数、事务、保存点、重复键 SQLSTATE 和异常后连接恢复。基线见 [`tests/baselines/compat-m-o-matrix.json`](tests/baselines/compat-m-o-matrix.json)。
 
 ## 客户怎么使用
 
 客户需要安装：
 
-1. PHP 8.1+ 与 `PDO_ODBC`。
+1. PHP 7.2.34+ 与对应版本的 `PDO_ODBC`。
 2. 与 GaussDB 服务端版本、操作系统和 CPU 架构匹配的官方 ODBC 驱动。
 3. 本仓库 `src/` 代码，或通过 Composer 引入本项目。
 
@@ -62,12 +66,12 @@ use GaussDb\Compat\Driver;
 require '/opt/gaussdb-php-compat/src/autoload.php';
 
 $db = Driver::connect(new ConnectionConfig(
-    host: 'gaussdb.example.com',
-    port: 5432,
-    database: 'app_m',
-    user: getenv('GAUSS_USER'),
-    password: getenv('GAUSS_PASSWORD'),
-    mode: CompatibilityMode::M,
+    'gaussdb.example.com',
+    5432,
+    'app_m',
+    getenv('GAUSS_USER'),
+    getenv('GAUSS_PASSWORD'),
+    CompatibilityMode::M
 ));
 
 $row = $db->execute('SELECT id, name FROM users WHERE id = ?', [1])->fetch();
@@ -75,9 +79,7 @@ $row = $db->execute('SELECT id, name FROM users WHERE id = ?', [1])->fetch();
 
 Oracle 兼容库只需改为：
 
-```php
-mode: CompatibilityMode::ORACLE
-```
+将构造函数第六个参数改为 `CompatibilityMode::ORACLE`。
 
 完整安装、二进制类型和卸载说明见：
 
@@ -104,7 +106,8 @@ make extract-windows-odbc GAUSSDB_DRIVER_ARCHIVE='/path/to/x86_64-driver.tar.gz'
 ## 项目边界
 
 - 不提供 `pdo_gaussdb.so`、`pdo_gaussdb.dll` 或 `gaussdb:` DSN；PHP 驱动名仍是 `odbc`。
-- 当前实测 PHP 版本为 8.3；代码最低语法版本为 8.1。
+- 已实测 PHP 7.2.34 和 PHP 8.3；代码最低语法版本为 PHP 7.2.34。
+- PHP 7.2 已停止官方安全维护；兼容能力不等于建议新生产系统继续使用旧 PHP，存量系统应配合隔离、补丁和升级计划。
 - ODBC 不支持的用户自定义类型、部分存储过程 OUT 参数等能力，本兼容层不能凭空补齐。
 - `TIMESTAMP` 微秒、M `AUTO_INCREMENT/lastInsertId()`、M `TEXT` 65,535 字节限制属于服务端或 ODBC 语义边界，不能伪造为已兼容。
 - 仓库不重新分发 GaussDB 厂商二进制，客户必须从有授权的驱动包或官方渠道获取。
