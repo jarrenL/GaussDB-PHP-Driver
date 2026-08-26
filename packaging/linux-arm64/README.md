@@ -1,5 +1,7 @@
 # Linux ARM64 packaging
 
+> Legacy PDO_PGSQL PoC。M/O 正式实现请使用 `packaging/linux-odbc/`。
+
 目标客户端包：GaussDB 507.0.0 B071 Distributed / Euler2.10 / ARM64 libpq。
 
 当前已验证其 `libpq.so.5.5` 与本地运行实例配套客户端完全一致。后续在这里加入构建容器、依赖清单、RPATH/loader 配置和安装脚本；GaussDB 二进制本身不提交到 Git。

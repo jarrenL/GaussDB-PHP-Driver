@@ -1,0 +1,31 @@
+{
+  "date": "2026-08-26",
+  "server": "GaussDB Kernel 507.0.0 build d791c80a",
+  "driver": "GaussDB 507 Unicode ODBC",
+  "php": "8.3",
+  "contract": "tests/php_compat_integration.php",
+  "tests_per_target": 10,
+  "scenarios": [
+    "prepared CRUD and scalar values",
+    "UTF-8 text round-trip",
+    "binary round-trip",
+    "bound SQL injection value",
+    "prepared statement reuse and row count",
+    "named parameters and mapped fetchAll",
+    "update and delete affected rows",
+    "transaction rollback and commit",
+    "savepoint",
+    "duplicate-key SQLSTATE and connection recovery"
+  ],
+  "targets": [
+    {"os": "Linux", "architecture": "aarch64", "mode": "M", "pass": 10, "fail": 0},
+    {"os": "Linux", "architecture": "aarch64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"os": "Linux", "architecture": "x86_64", "mode": "M", "pass": 10, "fail": 0},
+    {"os": "Linux", "architecture": "x86_64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"os": "Windows 11", "architecture": "AMD64", "mode": "M", "pass": 10, "fail": 0},
+    {"os": "Windows 11", "architecture": "AMD64", "mode": "ORA", "pass": 10, "fail": 0},
+    {"os": "Windows 11", "architecture": "i586", "mode": "M", "pass": 10, "fail": 0},
+    {"os": "Windows 11", "architecture": "i586", "mode": "ORA", "pass": 10, "fail": 0}
+  ],
+  "summary": {"pass": 80, "fail": 0}
+}

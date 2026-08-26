@@ -3,13 +3,22 @@ SHELL := /bin/bash
 GAUSSDB_DRIVER_ARCHIVE ?=
 ARM64_PHP_IMAGE ?= gaussdb-php:8.3-arm64-prototype
 X86_64_PHP_IMAGE ?= gaussdb-php:8.3-x86_64-prototype
+ARM64_ODBC_IMAGE ?= gaussdb-php:8.3-arm64-odbc
+X86_64_ODBC_IMAGE ?= gaussdb-php:8.3-x86_64-odbc
 
-.PHONY: help docker-preflight extract-client extract-client-arm64 extract-client-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint
+.PHONY: help docker-preflight extract-client extract-client-arm64 extract-client-x86_64 extract-odbc-arm64 extract-odbc-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 build-odbc-arm64 build-odbc-x86_64 test-compat-unit test-compat-arm64 test-compat-x86_64 test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint
 
 help:
 	@echo "make extract-client-arm64 GAUSSDB_DRIVER_ARCHIVE=/path/to/aarch64-driver.tar.gz"
 	@echo "make extract-client-x86_64 GAUSSDB_DRIVER_ARCHIVE=/path/to/x86_64-driver.tar.gz"
 	@echo "make extract-windows-odbc GAUSSDB_DRIVER_ARCHIVE=/path/to/x86_64-driver.tar.gz"
+	@echo "make extract-odbc-arm64 GAUSSDB_DRIVER_ARCHIVE=/path/to/aarch64-driver.tar.gz"
+	@echo "make extract-odbc-x86_64 GAUSSDB_DRIVER_ARCHIVE=/path/to/x86_64-driver.tar.gz"
+	@echo "make build-odbc-arm64"
+	@echo "make build-odbc-x86_64"
+	@echo "make test-compat-unit"
+	@echo "GAUSS_PASSWORD=... make test-compat-arm64"
+	@echo "GAUSS_PASSWORD=... make test-compat-x86_64"
 	@echo "make build-php-arm64"
 	@echo "make build-php-x86_64"
 	@echo "GAUSS_PASSWORD=... make test-arm64"
@@ -38,6 +47,14 @@ extract-windows-odbc:
 	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
 	./scripts/extract-gaussdb-507-windows-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/windows-odbc
 
+extract-odbc-arm64:
+	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
+	./scripts/extract-gaussdb-507-linux-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-arm64-odbc arm64
+
+extract-odbc-x86_64:
+	@test -n "$(GAUSSDB_DRIVER_ARCHIVE)" || (echo "GAUSSDB_DRIVER_ARCHIVE is required" >&2; exit 2)
+	./scripts/extract-gaussdb-507-linux-odbc.sh "$(GAUSSDB_DRIVER_ARCHIVE)" build/gaussdb-client/linux-x86_64-odbc x86_64
+
 build-php: build-php-arm64
 
 build-php-arm64:
@@ -47,6 +64,23 @@ build-php-arm64:
 build-php-x86_64:
 	@test -f build/gaussdb-client/linux-x86_64/lib/libpq.so.5.5 || (echo "Run make extract-client-x86_64 first" >&2; exit 2)
 	docker build --platform linux/amd64 -f packaging/linux-x86_64/Dockerfile -t "$(X86_64_PHP_IMAGE)" .
+
+build-odbc-arm64:
+	@test -f build/gaussdb-client/linux-arm64-odbc/odbc/lib/gsqlodbcw.so || (echo "Run make extract-odbc-arm64 first" >&2; exit 2)
+	docker build --platform linux/arm64 --build-arg CLIENT_ARCH=arm64 -f packaging/linux-odbc/Dockerfile -t "$(ARM64_ODBC_IMAGE)" .
+
+build-odbc-x86_64:
+	@test -f build/gaussdb-client/linux-x86_64-odbc/odbc/lib/gsqlodbcw.so || (echo "Run make extract-odbc-x86_64 first" >&2; exit 2)
+	docker build --platform linux/amd64 --build-arg CLIENT_ARCH=x86_64 -f packaging/linux-odbc/Dockerfile -t "$(X86_64_ODBC_IMAGE)" .
+
+test-compat-unit:
+	docker run --rm -v "$(CURDIR):/workspace:ro" -w /workspace php:8.3-cli-bookworm php tests/php_compat_unit.php
+
+test-compat-arm64:
+	./tests/run-linux-compat-matrix.sh arm64 "$(ARM64_ODBC_IMAGE)"
+
+test-compat-x86_64:
+	./tests/run-linux-compat-matrix.sh x86_64 "$(X86_64_ODBC_IMAGE)"
 
 test-arm64:
 	./tests/run-linux-driver-contract.sh linux-arm64 "$(ARM64_PHP_IMAGE)"
@@ -76,4 +110,4 @@ test-ssl:
 	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_ssl_probe.php "$(ARM64_PHP_IMAGE)"
 
 lint:
-	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm sh -eu -c 'for file in /workspace/examples/*.php /workspace/tests/*.php /workspace/tests/modes/*.php; do php -l "$$file"; done'
+	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm sh -eu -c 'for file in /workspace/src/*.php /workspace/examples/*.php /workspace/tests/*.php /workspace/tests/modes/*.php; do php -l "$$file"; done'

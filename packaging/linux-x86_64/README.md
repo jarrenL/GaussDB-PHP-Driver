@@ -1,5 +1,7 @@
 # Linux x86_64 packaging
 
+> Legacy PDO_PGSQL PoC。M/O 正式实现请使用 `packaging/linux-odbc/`。
+
 目标客户端包：GaussDB 507.0.0 B071 Distributed / Euler2.10 / x86_64 libpq。
 
 本平台与 ARM64 使用同一扩展源码，只在构建镜像、工具链、客户端库和产物架构上不同。

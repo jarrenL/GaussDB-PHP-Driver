@@ -1,277 +1,207 @@
-# GaussDB 507 M 模式 PHP 接入使用手册
+# GaussDB PHP M/O 兼容驱动使用手册
 
-## 1. 适用范围
+## 1. 客户需要安装什么
 
-本文档面向使用 PHP PDO 连接 **GaussDB Kernel 507.0.0 M 模式**的开发、测试和运维人员。当前已验证的客户端组合为：
+这不是一个单独的 `.so`/`.dll` 安装包。完整运行链由三部分组成：
 
-| 客户端平台 | PHP 接口 | 底层客户端 | 当前 DSN |
-|---|---|---|---|
-| Linux ARM64 | PDO_PGSQL | GaussDB 507 ARM64 `libpq.so.5.5` | `pgsql:` |
-| Linux x86_64 | PDO_PGSQL | GaussDB 507 x86_64 `libpq.so.5.5` | `pgsql:` |
-| Windows x64/x86 | PDO_ODBC | GaussDB 507 ODBC | `odbc:` |
+1. PHP 官方 `PDO_ODBC`。
+2. GaussDB 官方 Unicode ODBC 驱动。
+3. 本仓库 `src/` PHP 兼容层。
 
-> 当前没有交付独立的 `pdo_gaussdb.so`、`pdo_gaussdb.dll` 或 `gaussdb:` DSN。Linux 上使用 `pgsql:`，Windows 上使用 `odbc:`。
+客户不需要修改 GaussDB 服务端，也不需要下载或编译 PDO_PGSQL。业务服务器必须使用与操作系统、CPU 架构和 GaussDB 版本匹配的 ODBC 包。
 
-当前完整实测版本为 PHP 8.3。PHP 8.1、8.2 和 8.4 尚未纳入兼容性承诺。
+| 平台 | ODBC Driver Manager | GaussDB 文件 |
+|---|---|---|
+| Linux ARM64 | unixODBC | ARM64 `gsqlodbcw.so` 及配套库 |
+| Linux x86_64 | unixODBC | x86_64 `gsqlodbcw.so` 及配套库 |
+| Windows x64 | Windows ODBC | x64 官方安装器/DLL |
+| Windows x86 | Windows ODBC | x86 官方安装器/DLL |
 
-## 2. 连接前准备
+## 2. 安装本项目代码
 
-向 GaussDB 管理员获取以下信息：
+将仓库放到应用服务器，例如：
 
-- GaussDB 主机名或 IP。
-- 数据库端口，本项目实测为 `5432`。
-- M 模式数据库名。
-- 用户名和密码。
-- 用户对目标 schema 的访问权限。
-- 客户端到 GaussDB 端口的网络连通性。
-
-测试环境可参考 [`docker/init-test-user.sql.example`](docker/init-test-user.sql.example) 创建 `gdbdrv_m_test` 和 `gauss_php_test`。不要将真实密码写入 Git 或 PHP 源码。
-
-## 3. Linux 客户使用
-
-### 3.1 获取匹配架构的镜像
-
-交付方使用已授权的 GaussDB 507 驱动包构建镜像。驱动二进制不在本仓库重新分发。
-
-ARM64：
-
-```bash
-make extract-client-arm64 \
-  GAUSSDB_DRIVER_ARCHIVE='/secure/path/DBS-GaussDB-driver_aarch64_....tar.gz'
-make build-php-arm64
-./packaging/linux-arm64/verify-image.sh
+```text
+/opt/gaussdb-php-compat/
+├── composer.json
+└── src/
 ```
 
-x86_64：
+项目使用 Composer 时，可把本仓库配置为 VCS/path 依赖并执行 `composer require jarrenl/gaussdb-php-compat`。不使用 Composer 时直接加载：
 
-```bash
-make extract-client-x86_64 \
-  GAUSSDB_DRIVER_ARCHIVE='/secure/path/DBS-GaussDB-driver_x86_64_....tar.gz'
-make build-php-x86_64
-./packaging/linux-x86_64/verify-image.sh
+```php
+require '/opt/gaussdb-php-compat/src/autoload.php';
 ```
 
-默认镜像名：
+本仓库代码负责模式校验、UTF-8、布尔和二进制适配。只安装 PDO_ODBC 而不加载 `src/`，仍会暴露厂商驱动的原始差异。
 
-- ARM64：`gaussdb-php:8.3-arm64-prototype`
-- x86_64：`gaussdb-php:8.3-x86_64-prototype`
-
-镜像内的 `pdo_pgsql.so` 直接使用 GaussDB 507 头文件和 `libpq.so.5.5` 构建，并通过 RPATH 加载镜像内的 GaussDB 客户端库。
-
-### 3.2 PHP 连接代码
+## 3. M 模式连接
 
 ```php
 <?php
 
-declare(strict_types=1);
+use GaussDb\Compat\CompatibilityMode;
+use GaussDb\Compat\ConnectionConfig;
+use GaussDb\Compat\Driver;
+
+require '/opt/gaussdb-php-compat/src/autoload.php';
 
 $password = getenv('GAUSS_PASSWORD');
 if ($password === false || $password === '') {
     throw new RuntimeException('GAUSS_PASSWORD is required');
 }
 
-$dsn = sprintf(
-    'pgsql:host=%s;port=%s;dbname=%s',
-    getenv('GAUSS_HOST') ?: '127.0.0.1',
-    getenv('GAUSS_PORT') ?: '5432',
-    getenv('GAUSS_DATABASE') ?: 'gdbdrv_m_test'
-);
+$db = Driver::connect(new ConnectionConfig(
+    host: getenv('GAUSS_HOST') ?: 'gaussdb.example.com',
+    port: (int) (getenv('GAUSS_PORT') ?: 5432),
+    database: getenv('GAUSS_DATABASE') ?: 'app_m',
+    user: getenv('GAUSS_USER') ?: 'app_user',
+    password: $password,
+    mode: CompatibilityMode::M,
+));
 
-$pdo = new PDO(
-    $dsn,
-    getenv('GAUSS_USER') ?: 'gauss_php_test',
-    $password,
-    [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_STRINGIFY_FETCHES => false,
-        PDO::ATTR_EMULATE_PREPARES => false,
-    ]
-);
-
-$statement = $pdo->prepare('SELECT id, name FROM users WHERE id = ?');
-$statement->execute([1]);
+$statement = $db->execute('SELECT id, name FROM users WHERE id = ?', [1]);
 $row = $statement->fetch();
 ```
 
-业务 SQL 中的值应使用 `prepare()` 和参数绑定，不要直接拼接外部输入。DECIMAL 建议按字符串处理，避免转换成 PHP `float` 后丢失精度。
+连接成功后代码会查询 `pg_database.datcompatibility`；目标不是 M 时立即失败。
 
-### 3.3 在镜像中运行客户 PHP 程序
+## 4. Oracle 兼容模式连接
 
-假设客户程序为当前目录的 `app.php`：
+GaussDB 官方名称是 A/ORA。本项目也接受字符串别名 `O`：
 
-```bash
-docker run --rm \
-  --platform linux/arm64 \
-  -v "$PWD:/workspace:ro" \
-  -w /workspace \
-  -e GAUSS_HOST='gaussdb.example.com' \
-  -e GAUSS_PORT='5432' \
-  -e GAUSS_DATABASE='gdbdrv_m_test' \
-  -e GAUSS_USER='gauss_php_test' \
-  -e GAUSS_PASSWORD \
-  gaussdb-php:8.3-arm64-prototype \
-  php app.php
+```php
+mode: CompatibilityMode::ORACLE
 ```
 
-x86_64 环境将 `--platform` 改为 `linux/amd64`，镜像改为 `gaussdb-php:8.3-x86_64-prototype`。如果 GaussDB 位于另一 Docker 网络，还需通过 `--network <network>` 加入该网络。
+或从配置读取：
 
-### 3.4 连接验证
-
-```bash
-docker run --rm \
-  --platform linux/arm64 \
-  -v "$PWD/tests:/tests:ro" \
-  -e GAUSS_HOST='gaussdb.example.com' \
-  -e GAUSS_PORT='5432' \
-  -e GAUSS_DATABASE='gdbdrv_m_test' \
-  -e GAUSS_USER='gauss_php_test' \
-  -e GAUSS_PASSWORD \
-  gaussdb-php:8.3-arm64-prototype \
-  php /tests/php_pdo_pgsql_smoke.php
+```php
+mode: CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'O')
 ```
 
-检查扩展和底层库：
+其他连接代码与 M 相同。连接到非 ORA 数据库时会拒绝继续运行。
 
-```bash
-php -r 'var_dump(extension_loaded("pdo_pgsql"), PDO::getAvailableDrivers());'
-ldd "$(php-config --extension-dir)/pdo_pgsql.so"
+## 5. 参数和类型
+
+普通参数直接使用数组。PHP 布尔值会自动绑定为整数 `0/1`：
+
+```php
+$db->execute(
+    'INSERT INTO feature_flags (id, enabled) VALUES (?, ?)',
+    [1, true],
+);
 ```
 
-`PDO::getAvailableDrivers()` 应包含 `pgsql`，`ldd` 结果应加载镜像中 `/opt/gaussdb-client/lib/` 下的 GaussDB 客户端库。
+DECIMAL/NUMBER 建议用字符串，避免 PHP `float` 精度损失。
 
-### 3.5 不建议直接使用系统 PHP-PGSQL 包
+二进制入参使用 `BinaryValue`，不要自行判断当前模式：
 
-系统包管理器安装的 `php-pgsql` 通常链接 PostgreSQL 自带 `libpq`，不一定兼容 GaussDB 507 的认证和私有依赖。当出现以下错误时，首先检查动态链接：
+```php
+use GaussDb\Compat\BinaryValue;
+use GaussDb\Compat\ResultType;
+
+$bytes = "A\x00B\xFFZ";
+$db->execute(
+    'INSERT INTO files (id, payload) VALUES (?, ?)',
+    [1, new BinaryValue($bytes)],
+);
+
+$row = $db->execute(
+    'SELECT payload FROM files WHERE id = ?',
+    [1],
+    ['payload' => ResultType::BINARY_HEX],
+)->fetch();
+```
+
+M 模式表字段使用 `VARBINARY/BLOB`；ORA 模式使用 `RAW/BLOB`。`BINARY_HEX` 只应用于明确的二进制列，避免把普通十六进制文本误解码。
+
+布尔结果需要 PHP `bool` 时显式标记：
+
+```php
+$row = $db->execute(
+    'SELECT enabled FROM feature_flags WHERE id = ?',
+    [1],
+    ['enabled' => ResultType::BOOLEAN],
+)->fetch();
+```
+
+## 6. 事务和原生 PDO
+
+```php
+$db->beginTransaction();
+try {
+    $db->execute('UPDATE accounts SET balance = balance - ? WHERE id = ?', ['10.00', 1]);
+    $db->execute('UPDATE accounts SET balance = balance + ? WHERE id = ?', ['10.00', 2]);
+    $db->commit();
+} catch (Throwable $error) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    throw $error;
+}
+```
+
+兼容层未封装的标准能力可通过 `$db->nativePdo()` 和 `$statement->nativeStatement()` 访问；此时调用方自行承担类型差异。
+
+## 7. Windows 安装概要
+
+1. 安装 PHP 8.3 NTS，并启用 `extension=pdo_odbc`。
+2. 安装匹配位数的 GaussDB ODBC；PHP x64 对应 ODBC x64，PHP x86 对应 ODBC x86。
+3. 优先使用 `GaussDB Unicode` 驱动。
+4. 将本仓库放到服务器并加载 `src/autoload.php`。
+
+辅助脚本见 [`packaging/windows-odbc/`](packaging/windows-odbc/)。同机安装 x86/x64 时使用 `install-side-by-side.ps1`，避免厂商安装器共用目录互相覆盖。
+
+## 8. 连接参数
+
+兼容层默认生成无 DSN 连接串，并加入：
 
 ```text
-none of the server's SASL authentication mechanisms are supported
+Driver={GaussDB Unicode}
+ConnSettings=set client_encoding=UTF8
+BoolsAsChar=0
+ByteaAsLongVarBinary=1
 ```
 
-当前可验收的 Linux 交付方式是本项目构建的镜像。若需将扩展直接安装到客户主机，必须额外固定 PHP ABI、CPU 架构、GaussDB 客户端库路径和 RPATH，并执行完整契约测试。
+已配置系统 DSN 时可传入：
 
-## 4. Windows 客户使用
-
-Windows 使用 `PDO_ODBC + GaussDB 507 ODBC`。PHP、PDO_ODBC、ODBC 驱动和 DSN 的位数必须一致。
-
-### 4.1 安装 PHP 和 ODBC
-
-以管理员 PowerShell 执行：
-
-```powershell
-./packaging/windows-odbc/setup-php.ps1
-
-./packaging/windows-odbc/install-side-by-side.ps1 `
-  -X86InstallerPath C:\path\to\x86\gsqlodbc.exe `
-  -X64InstallerPath C:\path\to\x64\gsqlodbc.exe
-
-Get-OdbcDriver | Where-Object Name -In @(
-  'GaussDB Unicode', 'GaussDB ANSI', 'gsqlodbc'
+```php
+new ConnectionConfig(
+    host: 'unused',
+    port: 5432,
+    database: 'app_m',
+    user: $user,
+    password: $password,
+    mode: CompatibilityMode::M,
+    dsn: 'GaussDB507',
 )
 ```
 
-只需一种位数时，可使用对应安装器；同一主机同时使用 x64/x86 时应使用 `install-side-by-side.ps1`，避免官方安装器的共用目录和注册表项相互覆盖。
+系统 DSN 自身仍须设置 UTF-8 和二进制相关选项。
 
-### 4.2 无 DSN 连接（当前推荐）
-
-```powershell
-$env:GAUSS_ODBC_CONNECTION_STRING = 'Driver={GaussDB Unicode};Servername=gaussdb.example.com;Port=5432;Database=gdbdrv_m_test;SSLmode=prefer'
-$env:GAUSS_USER = 'gauss_php_test'
-$env:GAUSS_PASSWORD = '<password>'
-
-C:\GaussDBTest\php-8.3.8-x64\php.exe .\tests\php_pdo_odbc_smoke.php
-```
-
-PHP 代码示例：
-
-```php
-<?php
-
-$pdo = new PDO(
-    'odbc:Driver={GaussDB Unicode};Servername=gaussdb.example.com;Port=5432;Database=gdbdrv_m_test;SSLmode=prefer',
-    getenv('GAUSS_USER'),
-    getenv('GAUSS_PASSWORD'),
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
-```
-
-`SSLmode=prefer` 不等于已经建立 TLS。对安全环境的验收应使用服务端实际支持的 require/证书参数并单独验证。当前本地 507 测试实例为 `ssl=off`。
-
-### 4.3 系统 DSN 连接
-
-```powershell
-./packaging/windows-odbc/configure-dsn.ps1 `
-  -Name GaussDB507 `
-  -DriverName 'GaussDB Unicode' `
-  -Server 'gaussdb.example.com' `
-  -Port 5432 `
-  -Database gdbdrv_m_test `
-  -Platform '64-bit'
-```
-
-```php
-<?php
-
-$pdo = new PDO(
-    'odbc:GaussDB507',
-    getenv('GAUSS_USER'),
-    getenv('GAUSS_PASSWORD'),
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
-```
-
-当前实测中，无 DSN 连接串比系统 DSN 在自动化进程中更稳定。
-
-## 5. 生产使用建议
-
-- 密码通过密钥管理系统、受限环境变量或权限受控文件传入，不写入镜像、代码或命令历史。
-- 为应用创建最小权限数据库用户，不使用 GaussDB 管理员账号运行业务。
-- 发布前在客户的真实 GaussDB 版本、网络和权限环境执行契约测试。
-- 不依赖 `getColumnMeta()['native_type']` 识别 M 私有 BOOLEAN/VARBINARY 类型。
-- 不依赖 `lastInsertId()`；当前 Linux 和 Windows 都没有稳定的 M `AUTO_INCREMENT` PDO 语义。
-- DECIMAL 按字符串处理；TIMESTAMP 当前只承诺秒级精度。
-- Linux VARBINARY 二进制值优先使用 `PDO::PARAM_LOB`；Windows 不要假定 ODBC 返回值已是原始字节。
-- M TEXT 在当前实例的实测上限为 65,535 字节，65,536 字节开始返回 SQLSTATE `22001`。
-- Windows ODBC 当前基线存在中文/emoji 编码问题，未完成适配前不承诺无损 Unicode。
-
-详细说明和临时规避见 [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md)。
-
-## 6. 发布验收
-
-交付给客户前至少完成：
-
-1. 确认 PHP、CPU 和驱动架构一致。
-2. 确认 Linux `pdo_pgsql.so` 加载的是 GaussDB 配套 `libpq`，或 Windows PDO_ODBC 加载的是对应位数 GaussDB ODBC。
-3. 验证正确密码可连接、错误密码被拒绝，且日志不泄露密码。
-4. 执行 CRUD、参数绑定、事务回滚和关键业务类型测试。
-5. 评估所有与客户业务相关的已知限制。
-6. 若项目要求 TLS，必须在启用 SSL 的 GaussDB 实例上完成 `sslmode=require` 及证书验收。
-
-公共契约测试入口、判定标准和已跟踪的四平台结果见 [`tests/README.md`](tests/README.md)。
-
-## 7. 常见故障
-
-### `could not find driver`
-
-PDO 驱动未加载。Linux 检查 `pdo_pgsql`，Windows 检查 `PDO_ODBC`：
+## 9. 验收
 
 ```bash
-php -m
-php -r 'print_r(PDO::getAvailableDrivers());'
+export GAUSS_HOST='gaussdb.example.com'
+export GAUSS_PORT='5432'
+export GAUSS_DATABASE='app_m'
+export GAUSS_MODE='M'
+export GAUSS_USER='app_user'
+read -r -s -p 'GaussDB password: ' GAUSS_PASSWORD
+export GAUSS_PASSWORD
+php tests/php_compat_integration.php
 ```
 
-### Linux 认证机制不支持
+期望 `summary.fail` 为 `0`。ORA 库将 `GAUSS_MODE` 改为 `O` 并设置对应数据库名。
 
-检查 `pdo_pgsql.so` 是否误加载系统 PostgreSQL `libpq`。使用本项目镜像，不要在镜像中再安装系统 `php-pgsql` 覆盖已构建扩展。
+## 10. 生产边界
 
-### Windows 错误 193
+- 不依赖 `PDO::lastInsertId()`；M 本地 507 的 `AUTO_INCREMENT` 与 PDO/ODBC 语义不稳定。
+- 当前只承诺时间戳秒级精度，不伪造已丢失的微秒。
+- M `TEXT` 本地实测 65,535 字节成功，65,536 字节返回 `22001`。
+- ODBC 用户自定义类型、部分存储过程 OUT 参数等限制仍然存在。
+- 密码从密钥管理系统或进程环境注入，不写入代码、仓库或普通日志。
+- 客户升级 GaussDB、PHP、操作系统或 CPU 架构后必须重新执行契约测试。
 
-通常是 PHP、PDO_ODBC 和 GaussDB ODBC 位数不一致。使用 `install-side-by-side.ps1` 和 `setup-php.ps1 -ExpectedArchitecture` 重新检查。
-
-### 连接超时或拒绝
-
-检查主机名、端口、容器网络、防火墙和 GaussDB `listen_addresses`/host 认证配置。先从 PHP 实际运行的主机或容器验证 TCP 连通性。
-
-### `server does not support SSL, but SSL was required`
-
-说明客户端已要求 SSL，但当前 GaussDB 实例未提供 SSL。不要为了消除错误而在需要 TLS 的生产环境降级为 `prefer`；应由数据库管理员启用并配置证书后重新验收。
+更多信息见 [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md)。

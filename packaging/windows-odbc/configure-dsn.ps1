@@ -26,8 +26,10 @@ Add-OdbcDsn `
         "Servername=$Server",
         "Port=$Port",
         "Database=$Database",
-        'SSLmode=prefer'
+        'SSLmode=prefer',
+        'ConnSettings=set client_encoding=UTF8',
+        'BoolsAsChar=0',
+        'ByteaAsLongVarBinary=1'
     )
 
 Get-OdbcDsn -Name $Name -DsnType System -Platform $Platform | Format-List
-

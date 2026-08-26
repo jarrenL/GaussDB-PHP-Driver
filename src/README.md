@@ -1,7 +1,10 @@
-# Extension source (Phase 2 reserved)
+# PHP compatibility layer
 
-本目录是 Linux `pdo_gaussdb` 扩展的 Phase 2 预留位置。当前没有导入扩展源码，也没有交付 `pdo_gaussdb.so` 或 `gaussdb:` DSN；Phase 1 的可运行 Linux 原型仍是 PHP 官方 `pdo_pgsql.so` 加 GaussDB 507 `libpq`。
+这里是实际交付的 PHP 运行时代码，不再是预留目录。实现基于 PHP `PDO_ODBC` 和 GaussDB 官方 Unicode ODBC 驱动，不修改 GaussDB 内核，也不复制厂商二进制。
 
-候选实现策略是从与目标 PHP 版本匹配的官方 `ext/pdo_pgsql` 提取最小基线，链接 GaussDB 507 配套 libpq，再加入 M 模式参数与类型适配。正式导入代码前先固定上游 PHP 版本、许可证文件和补丁维护方式。
+- `CompatibilityMode::M`：M 兼容模式。
+- `CompatibilityMode::ORACLE`：GaussDB 官方名称是 A/ORA；项目同时接受客户口径中的 `O`。
+- `Driver`：创建 ODBC 连接，强制校验数据库兼容模式和 UTF-8 客户端编码。
+- `Statement`：统一布尔参数为 `0/1`，支持二进制 LOB 参数，并按显式列映射解码 ODBC 返回的十六进制二进制值。
 
-ARM64 与 x86_64 共用这里的源码，不维护架构分支。
+代码遵循 PSR-4，可通过 Composer 加载；没有 Composer 时也可以直接引用 `src/autoload.php`。

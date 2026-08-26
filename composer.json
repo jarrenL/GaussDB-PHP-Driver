@@ -1,0 +1,16 @@
+{
+  "name": "jarrenl/gaussdb-php-compat",
+  "description": "PDO-compatible GaussDB M and Oracle-compatible mode adapter backed by the official GaussDB ODBC driver",
+  "type": "library",
+  "license": "Apache-2.0",
+  "require": {
+    "php": ">=8.1",
+    "ext-pdo": "*",
+    "ext-pdo_odbc": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "GaussDb\\Compat\\": "src/"
+    }
+  }
+}
