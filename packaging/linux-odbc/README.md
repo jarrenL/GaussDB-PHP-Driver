@@ -17,4 +17,4 @@ make build-php72-odbc-arm64
 make build-php72-odbc-x86_64
 ```
 
-运行时通过 `Driver={GaussDB Unicode}` 使用 Unicode 驱动，连接串固定加入 `ConnSettings=set client_encoding=UTF8`。M 和 A/ORA（客户口径 O）模式使用相同的 PHP 代码，但连接后会校验目标数据库模式，防止连错库。
+运行时通过 `Driver={GaussDB Unicode}` 使用 Unicode 驱动，连接串固定加入 `ConnSettings=set client_encoding=UTF8`。M 和 A/ORA（客户口径 O）模式使用相同的 PHP 代码，但连接后会校验目标数据库模式；M 接受 `datcompatibility` 返回 `M` 或 `MYSQL`。

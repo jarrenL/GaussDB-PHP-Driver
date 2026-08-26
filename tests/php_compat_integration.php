@@ -64,7 +64,7 @@ try {
             name VARCHAR(256) NOT NULL,
             amount DECIMAL(20,4),
             enabled BOOLEAN,
-            payload VARBINARY(256),
+            payload BLOB,
             note VARCHAR(256),
             created_at TIMESTAMP
         )");

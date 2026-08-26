@@ -15,9 +15,12 @@ function checkUnit(bool $condition, string $message): void
 }
 
 checkUnit(CompatibilityMode::fromName('M') === CompatibilityMode::M, 'M alias failed');
+checkUnit(CompatibilityMode::fromName('mysql') === CompatibilityMode::M, 'MYSQL alias failed');
 checkUnit(CompatibilityMode::fromName('O') === CompatibilityMode::ORACLE, 'O alias failed');
 checkUnit(CompatibilityMode::fromName('A') === CompatibilityMode::ORACLE, 'A alias failed');
 checkUnit(CompatibilityMode::matchesDatabaseValue(CompatibilityMode::ORACLE, 'ORA'), 'ORA database match failed');
+checkUnit(CompatibilityMode::matchesDatabaseValue(CompatibilityMode::M, 'MYSQL'), 'MYSQL database match failed');
+checkUnit(CompatibilityMode::matchesDatabaseValue(CompatibilityMode::M, ' mysql '), 'Normalized MYSQL database match failed');
 checkUnit(!CompatibilityMode::matchesDatabaseValue(CompatibilityMode::M, 'ORA'), 'Mode mismatch was accepted');
 
 $config = new ConnectionConfig('db.example.com', 5432, 'app', 'user', 'secret', CompatibilityMode::M);

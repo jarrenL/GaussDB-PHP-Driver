@@ -21,10 +21,10 @@ GaussDB 当前官方驱动清单没有独立 PHP 驱动；官方开发指南明�
 ## 已实现能力
 
 - Windows 与 Linux 使用同一套 PHP API。
-- M 与 A/ORA（O）连接后自动校验数据库模式，防止连错库。
+- M 与 A/ORA（O）连接后自动校验数据库模式，M 接受 `datcompatibility` 返回 `M` 或 `MYSQL`，防止连错库。
 - 连接串强制加入 `ConnSettings=set client_encoding=UTF8`。
 - PHP `bool` 自动适配为 M/ODBC 可接受的 `0/1`。
-- `BinaryValue` 根据模式自动选择绑定方式：M `VARBINARY/BLOB` 使用原始 LOB，ORA `RAW` 使用十六进制。
+- `BinaryValue` 根据模式自动选择绑定方式：M `BLOB` 使用原始 LOB，ORA `RAW` 使用十六进制。
 - `ResultType::BINARY_HEX` 将 GaussDB ODBC 返回的十六进制二进制值恢复成 PHP 原始字节。
 - 保留预处理、命名/位置参数、事务、保存点、`rowCount()`、SQLSTATE 和原生 PDO 访问能力。
 - 支持 Composer PSR-4，也可直接加载 `src/autoload.php`。

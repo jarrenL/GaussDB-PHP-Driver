@@ -38,7 +38,7 @@ CREATE TABLE php_driver_smoke (
     name VARCHAR(128) NOT NULL,
     amount DECIMAL(20, 4),
     enabled BOOLEAN,
-    payload VARBINARY(128),
+    payload BLOB,
     created_at TIMESTAMP
 )
 SQL);

@@ -146,7 +146,7 @@ try {
             name VARCHAR(256) NOT NULL,
             amount DECIMAL(20,4),
             enabled BOOLEAN,
-            payload VARBINARY(256),
+            payload BLOB,
             note VARCHAR(256),
             created_at TIMESTAMP
         )");
@@ -344,7 +344,7 @@ try {
             expect($column !== false, "getColumnMeta returned false for column {$index}");
             $metadata[(string) ($column['name'] ?? $index)] = $column;
         }
-        expect(isset($metadata['enabled'], $metadata['payload']), 'BOOLEAN/VARBINARY metadata is missing');
+        expect(isset($metadata['enabled'], $metadata['payload']), 'BOOLEAN/BLOB metadata is missing');
         return $metadata;
     });
 
@@ -399,7 +399,7 @@ try {
         return ['clob_bytes' => strlen($clob)];
     }, false);
 
-    $runner->test('lob', 'VARBINARY using PDO PARAM_LOB round-trip', function () use ($pdo, $table): array {
+    $runner->test('lob', 'BLOB using PDO PARAM_LOB round-trip', function () use ($pdo, $table): array {
         $value = "LOB-A\x00B\xFFZ";
         $statement = $pdo->prepare("INSERT INTO {$table} (id, name, payload) VALUES (?, ?, ?)");
         $statement->bindValue(1, 34, PDO::PARAM_INT);
@@ -407,7 +407,7 @@ try {
         $statement->bindValue(3, $value, PDO::PARAM_LOB);
         $statement->execute();
         $actual = executePrepared($pdo, "SELECT payload FROM {$table} WHERE id = ?", [34])->fetchColumn();
-        expect($actual === $value, 'PDO::PARAM_LOB VARBINARY changed; got ' . bin2hex((string) $actual));
+        expect($actual === $value, 'PDO::PARAM_LOB BLOB changed; got ' . bin2hex((string) $actual));
         return ['bytes' => strlen($value)];
     }, false);
 

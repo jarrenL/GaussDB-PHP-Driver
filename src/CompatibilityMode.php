@@ -14,7 +14,7 @@ final class CompatibilityMode
     public static function fromName(string $mode): string
     {
         $normalized = strtoupper(trim($mode));
-        if ($normalized === 'M') {
+        if (in_array($normalized, array('M', 'MYSQL'), true)) {
             return self::M;
         }
         if (in_array($normalized, array('A', 'O', 'ORA', 'ORACLE'), true)) {
@@ -27,7 +27,7 @@ final class CompatibilityMode
     {
         $actual = strtoupper(trim($value));
         if ($mode === self::M) {
-            return $actual === 'M';
+            return in_array($actual, array('M', 'MYSQL'), true);
         }
         if ($mode === self::ORACLE) {
             return in_array($actual, array('A', 'O', 'ORA', 'ORACLE'), true);

@@ -64,7 +64,7 @@ $statement = $db->execute('SELECT id, name FROM users WHERE id = ?', [1]);
 $row = $statement->fetch();
 ```
 
-连接成功后代码会查询 `pg_database.datcompatibility`；目标不是 M 时立即失败。
+连接成功后代码会查询 `pg_database.datcompatibility`；M 模式接受数据库返回 `M` 或 `MYSQL`，其他值会立即失败。
 
 ## 4. Oracle 兼容模式连接
 
@@ -110,7 +110,7 @@ $row = $db->execute(
 )->fetch();
 ```
 
-M 模式表字段使用 `VARBINARY/BLOB`；ORA 模式使用 `RAW/BLOB`。`BINARY_HEX` 只应用于明确的二进制列，避免把普通十六进制文本误解码。
+M 模式表字段使用 `BLOB`；ORA 模式使用 `RAW/BLOB`。`BINARY_HEX` 只应用于明确的二进制列，避免把普通十六进制文本误解码。
 
 布尔结果需要 PHP `bool` 时显式标记：
 

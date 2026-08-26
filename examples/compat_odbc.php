@@ -26,7 +26,7 @@ $connection = Driver::connect(new ConnectionConfig(
 ));
 
 $connection->exec('DROP TABLE IF EXISTS php_compat_example');
-$connection->exec('CREATE TABLE php_compat_example (id BIGINT PRIMARY KEY, enabled BOOLEAN, payload VARBINARY(64))');
+$connection->exec('CREATE TABLE php_compat_example (id BIGINT PRIMARY KEY, enabled BOOLEAN, payload BLOB)');
 $connection->execute(
     'INSERT INTO php_compat_example (id, enabled, payload) VALUES (?, ?, ?)',
     [1, true, new BinaryValue("A\x00B\xFF")]

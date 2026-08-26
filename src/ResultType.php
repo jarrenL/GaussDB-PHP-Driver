@@ -6,7 +6,7 @@ namespace GaussDb\Compat;
 
 final class ResultType
 {
-    /** GaussDB ODBC exposes VARBINARY/BLOB values as hexadecimal text. */
+    /** GaussDB ODBC exposes binary/BLOB values as hexadecimal text. */
     const BINARY_HEX = 'binary_hex';
 
     /** Normalize M BOOLEAN or ORA NUMBER(1) 0/1 values to PHP bool. */
