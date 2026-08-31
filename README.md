@@ -48,13 +48,46 @@ GaussDB 当前官方驱动清单没有独立 PHP 驱动；官方开发指南明�
 
 ## 客户怎么使用
 
-客户需要安装：
+客户需要先准备：
 
 1. PHP 7.2.34+ 与对应版本的 `PDO_ODBC`。
-2. 与 GaussDB 服务端版本、操作系统和 CPU 架构匹配的官方 ODBC 驱动。
-3. 本仓库 `src/` 代码，或通过 Composer 引入本项目。
+2. 与 GaussDB 服务端、操作系统和 CPU 架构匹配的官方 ODBC 驱动。
+3. 本项目的 PHP 兼容层。
 
-最小示例：
+### 安装本项目代码
+
+本项目目前没有发布到 Packagist，不能在未配置仓库时直接执行 `composer require`。使用 Git 仓库安装（执行环境必须已配置仓库访问凭据）：
+
+```bash
+composer config repositories.gaussdb-php-compat vcs https://github.com/jarrenL/GaussDB-PHP-Driver.git
+composer require jarrenl/gaussdb-php-compat:dev-main
+```
+
+内网或已下载源码的环境建议使用本地 path 仓库：
+
+```bash
+composer config repositories.gaussdb-php-compat path /opt/gaussdb-php-compat
+composer require jarrenl/gaussdb-php-compat:@dev
+```
+
+业务代码随后加载 `vendor/autoload.php`。不使用 Composer 时，将仓库放到应用服务器并直接加载 `src/autoload.php`。
+
+### 模式参数
+
+`CompatibilityMode` 是为兼容 PHP 7.2 而提供的字符串常量类，不是 PHP 8.1 enum。固定模式优先传常量：
+
+- M：`CompatibilityMode::M`，常量值为 `M`。
+- Oracle 兼容模式：`CompatibilityMode::ORACLE`，常量值为 GaussDB 的规范值 `ORA`。
+
+从环境变量等外部配置读取时，显式归一化：
+
+```php
+$mode = CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'M');
+```
+
+`fromName()` 和 `ConnectionConfig` 接受的别名为：`M/MYSQL` 归一化为 `M`，`A/O/ORA/ORACLE` 归一化为 `ORA`。`ConnectionConfig` 的 `$mode` 是 `string`，是因为这些常量在 PHP 7.2 中本质上就是字符串；构造函数会再次校验和归一化。
+
+### 最小连接示例
 
 ```php
 <?php
@@ -63,29 +96,61 @@ use GaussDb\Compat\CompatibilityMode;
 use GaussDb\Compat\ConnectionConfig;
 use GaussDb\Compat\Driver;
 
-require '/opt/gaussdb-php-compat/src/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
+
+$user = getenv('GAUSS_USER');
+$password = getenv('GAUSS_PASSWORD');
+if (!is_string($user) || $user === '' || !is_string($password) || $password === '') {
+    throw new RuntimeException('GAUSS_USER and GAUSS_PASSWORD are required');
+}
 
 $db = Driver::connect(new ConnectionConfig(
     'gaussdb.example.com',
     5432,
     'app_m',
-    getenv('GAUSS_USER'),
-    getenv('GAUSS_PASSWORD'),
+    $user,
+    $password,
     CompatibilityMode::M
 ));
 
 $row = $db->execute('SELECT id, name FROM users WHERE id = ?', [1])->fetch();
 ```
 
-Oracle 兼容库只需改为：
+Oracle 兼容库将第六个参数改为 `CompatibilityMode::ORACLE`。不使用 Composer 时，将 `require` 改为本仓库 `src/autoload.php` 的实际路径。
 
-将构造函数第六个参数改为 `CompatibilityMode::ORACLE`。
+### Windows x64 快速安装
+
+在管理员 PowerShell 中执行，将以下路径替换为客户的实际路径：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+
+$Repo = 'C:\GaussDBTest\GaussDB-PHP-Driver'
+$PhpArchive = 'C:\packages\php-7.2.34-nts-Win32-VC15-x64.zip'
+$PhpHome = 'C:\GaussDBTest\php-7.2.34-x64'
+$OdbcInstaller = 'C:\packages\gaussdb-odbc-x64\gsqlodbc.exe'
+
+& "$Repo\packaging\windows-odbc\setup-php.ps1" `
+  -Archive $PhpArchive `
+  -PhpHome $PhpHome `
+  -StatusFile 'C:\GaussDBTest\php-setup-x64.txt' `
+  -ExpectedArchitecture x64
+
+& "$Repo\packaging\windows-odbc\install-gaussdb-odbc.ps1" `
+  -InstallerPath $OdbcInstaller
+
+& "$PhpHome\php.exe" -r "var_export(PDO::getAvailableDrivers());"
+Get-OdbcDriver | Where-Object Name -In @('GaussDB Unicode', 'GaussDB ANSI', 'gsqlodbc')
+```
+
+`setup-php.ps1` 会重建 `$PhpHome` 目录、生成 `php.ini` 并启用 `PDO_ODBC`。PHP x86 需要 x86 PHP 压缩包、`-ExpectedArchitecture x86` 和 x86 ODBC 安装器；同机同时安装 x64/x86 时使用 `install-side-by-side.ps1`。连接验收命令见 [Windows ODBC 安装](packaging/windows-odbc/README.md)。
 
 完整安装、二进制类型和卸载说明见：
 
 - [客户使用手册](CUSTOMER_USAGE.md)
 - [Linux 普通服务器安装](LINUX_BUILD_INSTALL.md)
 - [Windows ODBC 安装](packaging/windows-odbc/README.md)
+- [M/O 兼容层验收测试](tests/README.md)
 
 ## 构建入口
 

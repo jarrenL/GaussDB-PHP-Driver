@@ -27,13 +27,36 @@
 └── src/
 ```
 
-项目使用 Composer 时，可把本仓库配置为 VCS/path 依赖并执行 `composer require jarrenl/gaussdb-php-compat`。不使用 Composer 时直接加载：
+本项目目前没有发布到 Packagist。通过 Git 仓库安装（执行环境必须已配置仓库访问凭据）：
+
+```bash
+composer config repositories.gaussdb-php-compat vcs https://github.com/jarrenL/GaussDB-PHP-Driver.git
+composer require jarrenl/gaussdb-php-compat:dev-main
+```
+
+内网或已下载源码的环境建议从本地 path 仓库安装：
+
+```bash
+composer config repositories.gaussdb-php-compat path /opt/gaussdb-php-compat
+composer require jarrenl/gaussdb-php-compat:@dev
+```
+
+Composer 用户在业务代码中加载 `vendor/autoload.php`。不使用 Composer 时直接加载：
 
 ```php
 require '/opt/gaussdb-php-compat/src/autoload.php';
 ```
 
 本仓库代码负责模式校验、UTF-8、布尔和二进制适配。只安装 PDO_ODBC 而不加载 `src/`，仍会暴露厂商驱动的原始差异。
+
+`CompatibilityMode` 是 PHP 7.2 可用的字符串常量类，不是 enum。固定模式使用 `CompatibilityMode::M` 或 `CompatibilityMode::ORACLE`；动态配置使用 `CompatibilityMode::fromName()`。别名映射如下：
+
+| 输入 | 归一化值 | 用途 |
+|---|---|---|
+| `M`、`MYSQL` | `M` | M 模式 |
+| `A`、`O`、`ORA`、`ORACLE` | `ORA` | A/ORA（O）模式 |
+
+`CompatibilityMode::ORACLE` 的常量名表达用途，它的字符串值是规范值 `ORA`。`ConnectionConfig` 接收 `string $mode` 后会统一调用 `fromName()` 校验和归一化。
 
 ## 3. M 模式连接
 
@@ -74,7 +97,7 @@ GaussDB 官方名称是 A/ORA。本项目也接受字符串别名 `O`：
 
 或从配置读取：
 
-也可以把第六个参数写为 `CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'O')`。
+也可以把第六个参数写为 `CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'O')`。只有来自环境变量或配置文件的动态值才需要在调用处显式使用 `fromName()`。
 
 其他连接代码与 M 相同。连接到非 ORA 数据库时会拒绝继续运行。
 
@@ -106,7 +129,7 @@ $db->execute(
 $row = $db->execute(
     'SELECT payload FROM files WHERE id = ?',
     [1],
-    ['payload' => ResultType::BINARY_HEX],
+    ['payload' => ResultType::BINARY_HEX]
 )->fetch();
 ```
 
@@ -118,7 +141,7 @@ M 模式表字段使用 `BLOB`；ORA 模式使用 `RAW/BLOB`。`BINARY_HEX` 只�
 $row = $db->execute(
     'SELECT enabled FROM feature_flags WHERE id = ?',
     [1],
-    ['enabled' => ResultType::BOOLEAN],
+    ['enabled' => ResultType::BOOLEAN]
 )->fetch();
 ```
 
@@ -163,7 +186,7 @@ ByteaAsLongVarBinary=1
 已配置系统 DSN 时可传入：
 
 ```php
-new ConnectionConfig(
+$config = new ConnectionConfig(
     'unused',
     5432,
     'app_m',
@@ -173,7 +196,7 @@ new ConnectionConfig(
     'GaussDB Unicode',
     'prefer',
     'GaussDB'
-)
+);
 ```
 
 系统 DSN 自身仍须设置 UTF-8 和二进制相关选项。

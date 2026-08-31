@@ -29,7 +29,7 @@ function check(bool $condition, string $message): void
 $mode = CompatibilityMode::fromName(requiredEnv('GAUSS_MODE'));
 $database = requiredEnv('GAUSS_DATABASE');
 $connection = Driver::connect(new ConnectionConfig(
-    getenv('GAUSS_HOST') ?: 'host.docker.internal',
+    getenv('GAUSS_HOST') ?: '127.0.0.1',
     (int) (getenv('GAUSS_PORT') ?: 5432),
     $database,
     requiredEnv('GAUSS_USER'),

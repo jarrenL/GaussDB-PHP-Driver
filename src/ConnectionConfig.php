@@ -19,6 +19,9 @@ final class ConnectionConfig
     /** @var string|null */ public $dsn;
     /** @var array */ public $pdoOptions;
 
+    /**
+     * @param string $mode CompatibilityMode::M/ORACLE or an alias accepted by CompatibilityMode::fromName().
+     */
     public function __construct(
         string $host,
         int $port,

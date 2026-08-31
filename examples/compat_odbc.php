@@ -14,6 +14,7 @@ $password = getenv('GAUSS_PASSWORD');
 if ($password === false || $password === '') {
     throw new RuntimeException('GAUSS_PASSWORD is required');
 }
+$mode = CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'M');
 
 $connection = Driver::connect(new ConnectionConfig(
     getenv('GAUSS_HOST') ?: '127.0.0.1',
@@ -21,7 +22,7 @@ $connection = Driver::connect(new ConnectionConfig(
     getenv('GAUSS_DATABASE') ?: 'gdbdrv_m_test',
     getenv('GAUSS_USER') ?: 'gauss_php_test',
     $password,
-    CompatibilityMode::fromName(getenv('GAUSS_MODE') ?: 'M'),
+    $mode,
     getenv('GAUSS_ODBC_DRIVER') ?: 'GaussDB Unicode'
 ));
 

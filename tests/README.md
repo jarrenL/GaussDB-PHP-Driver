@@ -15,6 +15,21 @@
 9. 保存点回滚。
 10. 重复键五位 SQLSTATE 和异常后连接恢复。
 
+## 环境变量
+
+`php_compat_integration.php` 直接运行时使用以下变量：
+
+| 变量 | 必填 | 默认值 | 说明 |
+|---|---|---|---|
+| `GAUSS_HOST` | 否 | `127.0.0.1` | GaussDB 服务器地址 |
+| `GAUSS_PORT` | 否 | `5432` | GaussDB 端口 |
+| `GAUSS_DATABASE` | 是 | 无 | 用于验收的数据库 |
+| `GAUSS_USER` | 是 | 无 | 数据库用户 |
+| `GAUSS_PASSWORD` | 是 | 无 | 数据库密码，只通过进程环境或受控凭据注入 |
+| `GAUSS_MODE` | 是 | 无 | `M/MYSQL` 或 `A/O/ORA/ORACLE` |
+
+运行前确认 PHP 已加载 `PDO` 和 `PDO_ODBC`，且操作系统已注册 `GaussDB Unicode` ODBC 驱动。测试账号需要在目标 schema 中创建和删除随机名称测试表的权限。
+
 ## Linux
 
 ```bash

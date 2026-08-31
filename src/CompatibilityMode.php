@@ -8,6 +8,7 @@ use InvalidArgumentException;
 
 final class CompatibilityMode
 {
+    /** PHP 7.2-compatible string constants; this class is not a PHP enum. */
     const M = 'M';
     const ORACLE = 'ORA';
 
