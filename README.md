@@ -156,6 +156,7 @@ Get-OdbcDriver | Where-Object Name -In @('GaussDB Unicode', 'GaussDB ANSI', 'gsq
 完整安装、二进制类型和卸载说明见：
 
 - [客户使用手册](CUSTOMER_USAGE.md)
+- [测试指南](TESTING_GUIDE.md)（面向测试人员：项目讲解、怎么跑、怎么判读、已知边界）
 - [Linux 普通服务器安装](LINUX_BUILD_INSTALL.md)
 - [Windows ODBC 安装](packaging/windows-odbc/README.md)
 - [M/O 兼容层验收测试](tests/README.md)
