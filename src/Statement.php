@@ -150,6 +150,8 @@ final class Statement
 
     private function normalizeObject(\stdClass $row): \stdClass
     {
+        // PDO::FETCH_OBJ creates stdClass properties in result-column order. Custom
+        // PDO::FETCH_CLASS objects are deliberately excluded from normalization.
         $properties = array_keys(get_object_vars($row));
         foreach ($this->resultTypes as $column => $type) {
             $property = is_int($column) ? ($properties[$column] ?? null) : (string) $column;

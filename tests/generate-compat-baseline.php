@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/autoload.php';
+require __DIR__ . '/CompatibilityContract.php';
 
 if ($argc !== 3) {
     fwrite(STDERR, "Usage: php tests/generate-compat-baseline.php RESULT_DIRECTORY OUTPUT_JSON\n");
@@ -51,10 +52,10 @@ foreach ($iterator as $file) {
 
     // Ignore historical PDO_PGSQL and special-contract results in a mixed result tree.
     // Files claiming the current contract must still identify the ODBC delivery path.
-    if (($result['contract'] ?? null) !== 'gaussdb-php-compat-v1') {
+    if (($result['contract'] ?? null) !== CompatibilityContract::ID) {
         continue;
     }
-    if (($result['driver'] ?? null) !== 'odbc') {
+    if (($result['driver'] ?? null) !== CompatibilityContract::DRIVER) {
         throw new RuntimeException("Compatibility result is not an ODBC result: {$path}");
     }
     if (!isset($result['php'], $result['architecture'], $result['mode'], $result['summary'], $result['tests'])) {

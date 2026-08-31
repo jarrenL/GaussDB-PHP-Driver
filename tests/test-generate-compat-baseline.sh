@@ -6,11 +6,13 @@ temporary_directory=$(mktemp -d)
 trap 'rm -rf "$temporary_directory"' EXIT
 result_directory="$temporary_directory/results"
 mkdir -p "$result_directory"
+contract_id=$(php -r 'require "tests/CompatibilityContract.php"; echo CompatibilityContract::ID;')
+contract_driver=$(php -r 'require "tests/CompatibilityContract.php"; echo CompatibilityContract::DRIVER;')
 
-cat > "$result_directory/odbc.json" <<'JSON'
+cat > "$result_directory/odbc.json" <<JSON
 {
-  "contract": "gaussdb-php-compat-v1",
-  "driver": "odbc",
+  "contract": "$contract_id",
+  "driver": "$contract_driver",
   "mode": "MYSQL",
   "php": "8.3.0",
   "os": "Linux",
@@ -41,9 +43,9 @@ if (count($summary["targets"]) !== 1 || $summary["summary"] !== array("pass" => 
 }
 ' "$temporary_directory/summary.json"
 
-cat > "$result_directory/invalid-current-contract.json" <<'JSON'
+cat > "$result_directory/invalid-current-contract.json" <<JSON
 {
-  "contract": "gaussdb-php-compat-v1",
+  "contract": "$contract_id",
   "driver": "pgsql",
   "mode": "M",
   "php": "8.3.0",

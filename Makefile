@@ -147,4 +147,4 @@ lint:
 	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm sh -eu -c 'for file in /workspace/src/*.php /workspace/examples/*.php /workspace/tests/*.php /workspace/tests/modes/*.php; do php -l "$$file"; done'
 
 lint-php72:
-	docker run --rm -v "$(CURDIR):/workspace:ro" -w /workspace php:7.2-cli sh -eu -c 'for file in src/*.php examples/compat_odbc.php tests/php_compat_unit.php tests/php_compat_integration.php tests/generate-compat-baseline.php; do php -l "$$file"; done'
+	docker run --rm -v "$(CURDIR):/workspace:ro" -w /workspace php:7.2-cli sh -eu -c 'for file in src/*.php examples/compat_odbc.php tests/CompatibilityContract.php tests/php_compat_unit.php tests/php_compat_integration.php tests/generate-compat-baseline.php; do php -l "$$file"; done'

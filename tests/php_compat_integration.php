@@ -9,6 +9,7 @@ use GaussDb\Compat\Driver;
 use GaussDb\Compat\ResultType;
 
 require dirname(__DIR__) . '/src/autoload.php';
+require __DIR__ . '/CompatibilityContract.php';
 
 function requiredEnv(string $name): string
 {
@@ -260,8 +261,8 @@ foreach ($tests as $test) {
     }
 }
 echo json_encode([
-    'contract' => 'gaussdb-php-compat-v1',
-    'driver' => 'odbc',
+    'contract' => CompatibilityContract::ID,
+    'driver' => CompatibilityContract::DRIVER,
     'mode' => $mode,
     'database' => $database,
     'php' => PHP_VERSION,
