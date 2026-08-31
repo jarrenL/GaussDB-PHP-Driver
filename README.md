@@ -46,6 +46,12 @@ GaussDB 当前官方驱动清单没有独立 PHP 驱动；官方开发指南明�
 
 合计 **160/160 通过**。覆盖预处理 CRUD、DECIMAL、NULL、布尔、中文/emoji、含 NUL 与 `0xFF` 的二进制、SQL 注入防护、命名参数、结果映射、语句复用、增删改行数、事务、保存点、重复键 SQLSTATE 和异常后连接恢复。基线见 [`tests/baselines/compat-m-o-matrix.json`](tests/baselines/compat-m-o-matrix.json)。
 
+## CI
+
+每次 push/PR 都会执行 PHP 7.2/8.3 语法、单元测试、Composer、Shell、PowerShell 和 JSON 检查。GaussDB 官方 ODBC 二进制不提交到仓库，因此真实集成矩阵由 `workflow_dispatch` 在具有授权驱动包的 self-hosted runner 上触发。
+
+集成 job 会提取 ODBC 驱动，构建 PHP 7.2/8.3 的 ARM64/x86_64 镜像，运行 M/O 兼容契约，生成可追溯汇总并上传原始 JSON 工件。所需仓库变量为 `GAUSSDB_ARM64_DRIVER_ARCHIVE`、`GAUSSDB_X86_64_DRIVER_ARCHIVE`、`GAUSS_HOST`、`GAUSS_USER`、`GAUSS_M_DATABASE`、`GAUSS_O_DATABASE`和可选 `GAUSS_DOCKER_NETWORK`；密码通过 `GAUSS_PASSWORD` secret 注入。
+
 ## 客户怎么使用
 
 客户需要先准备：
@@ -56,7 +62,7 @@ GaussDB 当前官方驱动清单没有独立 PHP 驱动；官方开发指南明�
 
 ### 安装本项目代码
 
-本项目目前没有发布到 Packagist，不能在未配置仓库时直接执行 `composer require`。使用 Git 仓库安装（执行环境必须已配置仓库访问凭据）：
+本项目目前没有发布到 Packagist，不能在未配置仓库时直接执行 `composer require`。通过公开 Git 仓库安装：
 
 ```bash
 composer config repositories.gaussdb-php-compat vcs https://github.com/jarrenL/GaussDB-PHP-Driver.git

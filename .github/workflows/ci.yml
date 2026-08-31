@@ -11,16 +11,15 @@ on:
         default: false
         type: boolean
       run_security_tests:
-        description: Run one controlled bad-password attempt and the pre-provisioned read-only test
+        description: Run one controlled bad-password attempt and the pre-provisioned read-only test over ODBC
         required: true
         default: false
         type: boolean
       require_ssl:
-        description: Require the self-hosted GaussDB instance to pass sslmode=require
+        description: Require the self-hosted GaussDB instance to pass ODBC sslmode=require
         required: true
         default: false
         type: boolean
-
 jobs:
   static-checks:
     runs-on: ubuntu-latest
@@ -37,10 +36,13 @@ jobs:
           bash -n scripts/extract-gaussdb-client-x86_64.sh
           bash -n scripts/lib/extract-common.sh
           bash -n tests/run-linux-driver-contract.sh
+          bash -n tests/run-linux-compat-matrix.sh
           bash -n tests/run-linux-special-contract.sh
           bash -n tests/modes/run-local-mode-matrix.sh
       - name: Validate PHP files
-        run: make lint lint-php72 test-compat-unit-php72
+        run: make lint lint-php72 test-compat-unit test-compat-unit-php72
+      - name: Validate Composer package
+        run: composer validate --strict
       - name: Validate tracked JSON baselines
         run: php -r 'foreach (glob("tests/baselines/*.json") as $file) { json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR); echo "$file OK\n"; }'
       - name: Parse PowerShell files
@@ -61,38 +63,39 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Extract licensed client packages
+      - name: Extract licensed ODBC packages
         env:
           ARM64_ARCHIVE: ${{ vars.GAUSSDB_ARM64_DRIVER_ARCHIVE }}
           X86_64_ARCHIVE: ${{ vars.GAUSSDB_X86_64_DRIVER_ARCHIVE }}
         run: |
           test -f "$ARM64_ARCHIVE"
           test -f "$X86_64_ARCHIVE"
-          make extract-client-arm64 GAUSSDB_DRIVER_ARCHIVE="$ARM64_ARCHIVE"
-          make extract-client-x86_64 GAUSSDB_DRIVER_ARCHIVE="$X86_64_ARCHIVE"
-      - name: Build both Linux images
-        run: make build-php-arm64 build-php-x86_64
-      - name: Verify both Linux images
+          make extract-odbc-arm64 GAUSSDB_DRIVER_ARCHIVE="$ARM64_ARCHIVE"
+          make extract-odbc-x86_64 GAUSSDB_DRIVER_ARCHIVE="$X86_64_ARCHIVE"
+      - name: Build PHP 7.2 and PHP 8.3 ODBC images
         run: |
-          ./packaging/linux-arm64/verify-image.sh
-          ./packaging/linux-x86_64/verify-image.sh
-      - name: Run contract tests
+          make build-odbc-arm64 build-odbc-x86_64
+          make build-php72-odbc-arm64 build-php72-odbc-x86_64
+      - name: Run M/O compatibility matrices
         env:
           GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
           GAUSS_HOST: ${{ vars.GAUSS_HOST }}
           GAUSS_USER: ${{ vars.GAUSS_USER }}
-          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_M_DATABASE: ${{ vars.GAUSS_M_DATABASE }}
+          GAUSS_O_DATABASE: ${{ vars.GAUSS_O_DATABASE }}
           GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
-        run: make test-arm64 test-x86_64
-      - name: Characterize M TEXT threshold
+        run: |
+          make test-compat-arm64 test-compat-x86_64
+          make test-compat-php72-arm64 test-compat-php72-x86_64
+      - name: Characterize M TEXT threshold over ODBC
         env:
           GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
           GAUSS_HOST: ${{ vars.GAUSS_HOST }}
           GAUSS_USER: ${{ vars.GAUSS_USER }}
-          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_M_DATABASE }}
           GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
         run: make test-text-threshold
-      - name: Run controlled authentication and read-only tests
+      - name: Run controlled ODBC authentication and read-only tests
         if: inputs.run_security_tests
         env:
           GAUSS_BAD_PASSWORD: ${{ secrets.GAUSS_BAD_PASSWORD }}
@@ -100,15 +103,25 @@ jobs:
           GAUSS_READONLY_PASSWORD: ${{ secrets.GAUSS_READONLY_PASSWORD }}
           GAUSS_HOST: ${{ vars.GAUSS_HOST }}
           GAUSS_USER: ${{ vars.GAUSS_USER }}
-          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_M_DATABASE }}
           GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
         run: make test-auth test-readonly
-      - name: Require SSL connectivity
+      - name: Require ODBC SSL connectivity
         if: inputs.require_ssl
         env:
           GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
           GAUSS_HOST: ${{ vars.GAUSS_HOST }}
           GAUSS_USER: ${{ vars.GAUSS_USER }}
-          GAUSS_DATABASE: ${{ vars.GAUSS_DATABASE }}
+          GAUSS_DATABASE: ${{ vars.GAUSS_M_DATABASE }}
           GAUSS_DOCKER_NETWORK: ${{ vars.GAUSS_DOCKER_NETWORK }}
         run: make test-ssl
+      - name: Generate run summary
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace php:8.3-cli-bookworm \
+            php tests/generate-compat-baseline.php build/test-results build/test-results/compat-linux-ci-summary.json
+      - name: Upload compatibility results
+        uses: actions/upload-artifact@v4
+        with:
+          name: gaussdb-odbc-compat-results
+          path: build/test-results/*.json
+          if-no-files-found: error

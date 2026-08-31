@@ -59,7 +59,7 @@ final class ConnectionConfig
         }
 
         $parts = [
-            'Driver={' . str_replace('}', '}}', $this->driver) . '}',
+            'Driver=' . self::odbcDriver($this->driver),
             'Servername=' . self::odbcScalar($this->host),
             'Port=' . $this->port,
             'Database=' . self::odbcScalar($this->database),
@@ -74,9 +74,22 @@ final class ConnectionConfig
 
     private static function odbcScalar(string $value): string
     {
-        if (strpos($value, ';') !== false || strpos($value, "\0") !== false) {
-            throw new InvalidArgumentException('ODBC connection values must not contain semicolons or NUL bytes');
+        if (
+            strpos($value, ';') !== false
+            || strpos($value, '{') !== false
+            || strpos($value, '}') !== false
+            || strpos($value, "\0") !== false
+        ) {
+            throw new InvalidArgumentException('ODBC connection values must not contain semicolons, braces, or NUL bytes');
         }
         return $value;
+    }
+
+    private static function odbcDriver(string $value): string
+    {
+        if ($value === '' || strpos($value, "\0") !== false) {
+            throw new InvalidArgumentException('ODBC driver name must not be empty or contain NUL bytes');
+        }
+        return '{' . str_replace('}', '}}', $value) . '}';
     }
 }

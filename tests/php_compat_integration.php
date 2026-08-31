@@ -106,6 +106,15 @@ try {
             [0 => ResultType::BOOLEAN]
         )->fetchColumn();
         check($disabled === false, 'Boolean false was not normalized');
+
+        $bound = $connection->prepare("INSERT INTO {$table} (id, name, note) VALUES (?, ?, ?)");
+        $bound->bindValue(1, 5);
+        $bound->bindValue(2, 'bound-values');
+        $bound->bindValue(3, null);
+        $bound->execute();
+        $boundRow = $connection->execute("SELECT id, note FROM {$table} WHERE id = ?", [5])->fetch();
+        check(is_array($boundRow) && (string) $boundRow['id'] === '5', 'bindValue integer was not preserved');
+        check($boundRow['note'] === null, 'bindValue NULL was not preserved');
         return $row;
     });
 
@@ -162,6 +171,13 @@ try {
         )->fetchAll();
         check(count($rows) === 2, 'Mapped fetchAll returned the wrong row count');
         check($rows[0]['enabled'] === true && $rows[1]['enabled'] === false, 'Mapped fetchAll boolean values changed');
+
+        $booleans = $connection->execute(
+            "SELECT id, enabled FROM {$table} WHERE id IN (?, ?) ORDER BY id",
+            [1, 6],
+            [1 => ResultType::BOOLEAN]
+        )->fetchAll(PDO::FETCH_COLUMN, 1);
+        check($booleans === [true, false], 'FETCH_COLUMN index/result mapping changed');
     });
 
     $run('update delete and affected row counts', static function () use ($connection, $table): void {
@@ -230,6 +246,7 @@ echo json_encode([
     'mode' => $mode,
     'database' => $database,
     'php' => PHP_VERSION,
+    'os' => defined('PHP_OS_FAMILY') ? PHP_OS_FAMILY : PHP_OS,
     'architecture' => php_uname('m'),
     'summary' => ['pass' => count($tests) - $failed, 'fail' => $failed],
     'tests' => $tests,

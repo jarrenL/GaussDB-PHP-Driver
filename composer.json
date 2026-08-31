@@ -3,6 +3,11 @@
   "description": "PDO-compatible GaussDB M and Oracle-compatible mode adapter backed by the official GaussDB ODBC driver",
   "type": "library",
   "license": "Apache-2.0",
+  "homepage": "https://github.com/jarrenL/GaussDB-PHP-Driver",
+  "support": {
+    "issues": "https://github.com/jarrenL/GaussDB-PHP-Driver/issues",
+    "source": "https://github.com/jarrenL/GaussDB-PHP-Driver/tree/main"
+  },
   "require": {
     "php": ">=7.2.34",
     "ext-pdo": "*",

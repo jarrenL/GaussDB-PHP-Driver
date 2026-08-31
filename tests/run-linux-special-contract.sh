@@ -9,17 +9,37 @@ case "$profile" in
   *) echo "Unsupported profile: $profile" >&2; exit 2 ;;
 esac
 image=${3:-$default_image}
+test_driver=${GAUSS_TEST_DRIVER:-pgsql}
 [[ $test_file =~ ^[a-zA-Z0-9_.-]+\.php$ ]] || { echo "Unsafe test filename: $test_file" >&2; exit 2; }
 test -f "tests/$test_file" || { echo "Test not found: tests/$test_file" >&2; exit 2; }
 
+case "$test_driver" in
+  pgsql|odbc) ;;
+  *) echo "Unsupported GAUSS_TEST_DRIVER: $test_driver" >&2; exit 2 ;;
+esac
+
+host=${GAUSS_HOST:-gaussdb}
+port=${GAUSS_PORT:-5432}
+database=${GAUSS_DATABASE:-gdbdrv_m_test}
+odbc_connection_string="Driver={GaussDB Unicode};Servername=${host};Port=${port};Database=${database};SSLmode=${GAUSS_SSLMODE:-prefer};ConnSettings=set client_encoding=UTF8;BoolsAsChar=0;ByteaAsLongVarBinary=1"
+
+docker_arguments=(--rm --platform "$platform")
+if [[ -n ${GAUSS_DOCKER_NETWORK:-} ]]; then
+  docker_arguments+=(--network "$GAUSS_DOCKER_NETWORK")
+elif [[ $host == gaussdb ]]; then
+  docker_arguments+=(--network gaussdb_default)
+elif [[ $host == host.docker.internal ]]; then
+  docker_arguments+=(--add-host host.docker.internal:host-gateway)
+fi
+
 mkdir -p build/test-results
 result_name=${test_file%.php}-${profile}.json
-docker run --rm --platform "$platform" \
-  --network "${GAUSS_DOCKER_NETWORK:-gaussdb_default}" \
-  -e GAUSS_TEST_DRIVER=pgsql \
-  -e GAUSS_HOST="${GAUSS_HOST:-gaussdb}" \
-  -e GAUSS_PORT="${GAUSS_PORT:-5432}" \
-  -e GAUSS_DATABASE="${GAUSS_DATABASE:-gdbdrv_m_test}" \
+docker run "${docker_arguments[@]}" \
+  -e GAUSS_TEST_DRIVER="$test_driver" \
+  -e GAUSS_HOST="$host" \
+  -e GAUSS_PORT="$port" \
+  -e GAUSS_DATABASE="$database" \
+  -e GAUSS_ODBC_CONNECTION_STRING="$odbc_connection_string" \
   -e GAUSS_USER="${GAUSS_USER:-gauss_php_test}" \
   -e GAUSS_PASSWORD \
   -e GAUSS_BAD_PASSWORD \

@@ -7,8 +7,10 @@ ARM64_ODBC_IMAGE ?= gaussdb-php:8.3-arm64-odbc
 X86_64_ODBC_IMAGE ?= gaussdb-php:8.3-x86_64-odbc
 ARM64_PHP72_ODBC_IMAGE ?= gaussdb-php:7.2.34-arm64-odbc
 X86_64_PHP72_ODBC_IMAGE ?= gaussdb-php:7.2.34-x86_64-odbc
+COMPAT_RESULT_DIRECTORY ?= build/test-results
+COMPAT_BASELINE_OUTPUT ?= build/test-results/compat-generated-matrix.json
 
-.PHONY: help docker-preflight extract-client extract-client-arm64 extract-client-x86_64 extract-odbc-arm64 extract-odbc-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 build-odbc-arm64 build-odbc-x86_64 build-php72-odbc-arm64 build-php72-odbc-x86_64 test-compat-unit test-compat-unit-php72 test-compat-arm64 test-compat-x86_64 test-compat-php72-arm64 test-compat-php72-x86_64 test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint lint-php72
+.PHONY: help docker-preflight extract-client extract-client-arm64 extract-client-x86_64 extract-odbc-arm64 extract-odbc-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 build-odbc-arm64 build-odbc-x86_64 build-php72-odbc-arm64 build-php72-odbc-x86_64 test-compat-unit test-compat-unit-php72 test-compat-arm64 test-compat-x86_64 test-compat-php72-arm64 test-compat-php72-x86_64 generate-compat-baseline test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint lint-php72
 
 help:
 	@echo "make extract-client-arm64 GAUSSDB_DRIVER_ARCHIVE=/path/to/aarch64-driver.tar.gz"
@@ -24,6 +26,7 @@ help:
 	@echo "make test-compat-unit-php72"
 	@echo "GAUSS_PASSWORD=... make test-compat-arm64"
 	@echo "GAUSS_PASSWORD=... make test-compat-x86_64"
+	@echo "make generate-compat-baseline COMPAT_RESULT_DIRECTORY=build/test-results COMPAT_BASELINE_OUTPUT=build/test-results/compat-generated-matrix.json"
 	@echo "make build-php-arm64"
 	@echo "make build-php-x86_64"
 	@echo "GAUSS_PASSWORD=... make test-arm64"
@@ -104,6 +107,9 @@ test-compat-php72-arm64:
 test-compat-php72-x86_64:
 	GAUSS_RESULT_PREFIX=compat-php72 ./tests/run-linux-compat-matrix.sh x86_64 "$(X86_64_PHP72_ODBC_IMAGE)"
 
+generate-compat-baseline:
+	php tests/generate-compat-baseline.php "$(COMPAT_RESULT_DIRECTORY)" "$(COMPAT_BASELINE_OUTPUT)"
+
 test-arm64:
 	./tests/run-linux-driver-contract.sh linux-arm64 "$(ARM64_PHP_IMAGE)"
 
@@ -115,24 +121,24 @@ test-modes:
 
 test-auth:
 	@test -n "$${GAUSS_BAD_PASSWORD:-}" || (echo "GAUSS_BAD_PASSWORD is required" >&2; exit 2)
-	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_auth_negative.php "$(ARM64_PHP_IMAGE)"
+	GAUSS_TEST_DRIVER=odbc ./tests/run-linux-special-contract.sh linux-arm64 php_pdo_auth_negative.php "$(ARM64_ODBC_IMAGE)"
 
 test-readonly:
 	@test -n "$${GAUSS_READONLY_USER:-}" || (echo "GAUSS_READONLY_USER is required" >&2; exit 2)
 	@test -n "$${GAUSS_READONLY_PASSWORD:-}" || (echo "GAUSS_READONLY_PASSWORD is required" >&2; exit 2)
-	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_readonly_contract.php "$(ARM64_PHP_IMAGE)"
+	GAUSS_TEST_DRIVER=odbc ./tests/run-linux-special-contract.sh linux-arm64 php_pdo_readonly_contract.php "$(ARM64_ODBC_IMAGE)"
 
 test-text-threshold:
 	@test -n "$${GAUSS_PASSWORD:-}" || (echo "GAUSS_PASSWORD is required" >&2; exit 2)
-	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_large_text_threshold.php "$(ARM64_PHP_IMAGE)"
+	GAUSS_TEST_DRIVER=odbc ./tests/run-linux-special-contract.sh linux-arm64 php_pdo_large_text_threshold.php "$(ARM64_ODBC_IMAGE)"
 
 test-ssl:
 	@test -n "$${GAUSS_PASSWORD:-}" || (echo "GAUSS_PASSWORD is required" >&2; exit 2)
 	@# Probe exit 3 intentionally remains non-zero: a require-SSL gate must fail when TLS is unavailable.
-	./tests/run-linux-special-contract.sh linux-arm64 php_pdo_ssl_probe.php "$(ARM64_PHP_IMAGE)"
+	GAUSS_TEST_DRIVER=odbc GAUSS_SSLMODE=require ./tests/run-linux-special-contract.sh linux-arm64 php_pdo_ssl_probe.php "$(ARM64_ODBC_IMAGE)"
 
 lint:
 	docker run --rm -v "$(CURDIR):/workspace:ro" php:8.3-cli-bookworm sh -eu -c 'for file in /workspace/src/*.php /workspace/examples/*.php /workspace/tests/*.php /workspace/tests/modes/*.php; do php -l "$$file"; done'
 
 lint-php72:
-	docker run --rm -v "$(CURDIR):/workspace:ro" -w /workspace php:7.2-cli sh -eu -c 'for file in src/*.php examples/compat_odbc.php tests/php_compat_unit.php tests/php_compat_integration.php; do php -l "$$file"; done'
+	docker run --rm -v "$(CURDIR):/workspace:ro" -w /workspace php:7.2-cli sh -eu -c 'for file in src/*.php examples/compat_odbc.php tests/php_compat_unit.php tests/php_compat_integration.php tests/generate-compat-baseline.php; do php -l "$$file"; done'

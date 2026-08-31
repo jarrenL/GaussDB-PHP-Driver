@@ -4,6 +4,7 @@
   "driver": "version-matched GaussDB Unicode ODBC",
   "php_versions": ["7.2.34", "8.3"],
   "contract": "tests/php_compat_integration.php",
+  "generator": "tests/generate-compat-baseline.php",
   "tests_per_target": 10,
   "scenarios": [
     "prepared CRUD and scalar values",

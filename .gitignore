@@ -16,3 +16,5 @@ vendor/
 *.exe
 *.log
 .env
+dbeaver/
+dbeaver-common/

@@ -44,6 +44,14 @@ php tests/php_compat_integration.php
 
 ORA 数据库使用 `GAUSS_MODE=O`。成功条件是进程退出 `0` 且 JSON `summary.fail=0`。
 
+使用 `run-linux-compat-matrix.sh` 时，可通过 `GAUSS_DOCKER_NETWORK` 把 PHP 容器加入 GaussDB 所在 Docker 网络。未设置网络且 `GAUSS_HOST=host.docker.internal` 时，脚本会自动加入 `host-gateway`，因此在 Linux Docker 上也可连接宿主机。
+
+```bash
+GAUSS_DOCKER_NETWORK='gaussdb_default' \
+GAUSS_PASSWORD='...' \
+make test-compat-php72-arm64
+```
+
 ## Windows
 
 ```powershell
@@ -62,3 +70,15 @@ $env:GAUSS_PASSWORD = '<password>'
 正式结果见 `baselines/compat-m-o-matrix.json`：PHP 7.2.34/8.3、Linux ARM64/x86_64、Windows AMD64/i586 的 M 与 A/ORA 共 16 个目标，合计 160/160 通过。
 
 旧 `php_pdo_contract.php` 及四份早期原始行为结果仍保留，用于回归对比和解释兼容层修复前的差异，不作为当前正式通过标准。
+
+## 生成可追溯基线
+
+各平台 runner 输出的原始 JSON 放入一个干净目录，然后生成汇总：
+
+```bash
+make generate-compat-baseline \
+  COMPAT_RESULT_DIRECTORY=build/test-results/release-matrix \
+  COMPAT_BASELINE_OUTPUT=build/test-results/compat-generated-matrix.json
+```
+
+生成器会校验每个目标的用例名称和顺序、pass/fail 计数、目标唯一性，并记录原始文件名与契约脚本 SHA-256。CI 的 ODBC 集成 job 会上传原始 JSON 和自动汇总文件。

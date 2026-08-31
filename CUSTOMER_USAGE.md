@@ -27,7 +27,7 @@
 └── src/
 ```
 
-本项目目前没有发布到 Packagist。通过 Git 仓库安装（执行环境必须已配置仓库访问凭据）：
+本项目目前没有发布到 Packagist。通过公开 Git 仓库安装：
 
 ```bash
 composer config repositories.gaussdb-php-compat vcs https://github.com/jarrenL/GaussDB-PHP-Driver.git
@@ -112,6 +112,8 @@ $db->execute(
 );
 ```
 
+`Statement::bindValue()` 未显式传第三个 PDO 类型时，与 `execute()` 使用同一套推断：整数为 `PDO::PARAM_INT`、`null` 为 `PDO::PARAM_NULL`、`BinaryValue` 为模式对应的二进制绑定。显式传第三个参数时以调用方指定的类型为准。
+
 DECIMAL/NUMBER 建议用字符串，避免 PHP `float` 精度损失。
 
 二进制入参使用 `BinaryValue`，不要自行判断当前模式：
@@ -144,6 +146,16 @@ $row = $db->execute(
     ['enabled' => ResultType::BOOLEAN]
 )->fetch();
 ```
+
+布尔结果接受 PHP `true/false`、数字 `1/0`，以及不区分大小写的字符串 `1/0`、`t/f`、`true/false`（会去除首尾空白）。其他值会抛出 `UnexpectedValueException`。
+
+`fetchAll()` 会透传 PDO 的附加参数，例如读取第 3 列：
+
+```php
+$values = $statement->fetchAll(PDO::FETCH_COLUMN, 2);
+```
+
+需要对该列做结果归一化时，在创建语句时传入对应列索引的 `ResultType`。
 
 ## 6. 事务和原生 PDO
 
@@ -182,6 +194,8 @@ ConnSettings=set client_encoding=UTF8
 BoolsAsChar=0
 ByteaAsLongVarBinary=1
 ```
+
+驱动名使用 ODBC 花括号值语法并转义内部 `}`。GaussDB ODBC 会把 host/database 外层花括号当成实际值，因此这些标量保持无括号格式，并直接拒绝分号、花括号和 NUL 字节，防止注入新连接属性或产生驱动解析歧义。
 
 已配置系统 DSN 时可传入：
 

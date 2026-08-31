@@ -40,10 +40,12 @@ final class Statement
     }
 
     /** @param int|string $parameter @param mixed $value */
-    public function bindValue($parameter, $value, int $type = PDO::PARAM_STR): bool
+    public function bindValue($parameter, $value, ?int $type = null): bool
     {
-        if ($value instanceof BinaryValue || is_bool($value)) {
+        if ($type === null) {
             [$value, $type] = $this->normalizeParameter($value);
+        } elseif ($value instanceof BinaryValue) {
+            [$value] = $this->normalizeParameter($value);
         }
         return $this->statement->bindValue($parameter, $value, $type);
     }
@@ -62,14 +64,18 @@ final class Statement
     }
 
     /** @param int|null $mode */
-    public function fetchAll($mode = null): array
+    public function fetchAll($mode = null, ...$arguments): array
     {
-        $rows = $mode === null ? $this->statement->fetchAll() : $this->statement->fetchAll($mode);
+        $rows = $mode === null
+            ? $this->statement->fetchAll()
+            : $this->statement->fetchAll($mode, ...$arguments);
+        $column = $mode === PDO::FETCH_COLUMN && isset($arguments[0]) ? (int) $arguments[0] : 0;
+        $columnType = $this->resultTypes[$column] ?? ($this->resultTypes[0] ?? null);
         foreach ($rows as $index => $row) {
             if (is_array($row)) {
                 $rows[$index] = $this->normalizeRow($row);
-            } elseif ($mode === PDO::FETCH_COLUMN && isset($this->resultTypes[0])) {
-                $rows[$index] = self::normalizeResult($row, $this->resultTypes[0]);
+            } elseif ($mode === PDO::FETCH_COLUMN && $columnType !== null && $row !== null) {
+                $rows[$index] = self::normalizeResult($row, $columnType);
             }
         }
         return $rows;
@@ -150,11 +156,20 @@ final class Statement
     /** @param mixed $value */
     private static function toBoolean($value): bool
     {
-        if (in_array($value, [true, 1, '1', 't', 'true', 'TRUE'], true)) {
+        if ($value === true || $value === 1) {
             return true;
         }
-        if (in_array($value, [false, 0, '0', 'f', 'false', 'FALSE'], true)) {
+        if ($value === false || $value === 0) {
             return false;
+        }
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            if (in_array($normalized, array('1', 't', 'true'), true)) {
+                return true;
+            }
+            if (in_array($normalized, array('0', 'f', 'false'), true)) {
+                return false;
+            }
         }
         throw new UnexpectedValueException('GaussDB boolean result is not a recognized 0/1 value');
     }
