@@ -29,6 +29,8 @@
 
 本项目目前没有发布到 Packagist。通过公开 Git 仓库安装：
 
+以下命令在客户应用已有 `composer.json` 的项目根目录执行；全新空目录先执行 `composer init --no-interaction --name=customer/application`。
+
 ```bash
 composer config repositories.gaussdb-php-compat vcs https://github.com/jarrenL/GaussDB-PHP-Driver.git
 composer require jarrenl/gaussdb-php-compat:dev-main
