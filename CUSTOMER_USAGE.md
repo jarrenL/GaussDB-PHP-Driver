@@ -156,6 +156,7 @@ $values = $statement->fetchAll(PDO::FETCH_COLUMN, 2);
 ```
 
 需要对该列做结果归一化时，在创建语句时传入对应列索引的 `ResultType`。
+数组行和 `PDO::FETCH_OBJ` 返回的 `stdClass` 行都支持按列名或列索引归一化；自定义 `PDO::FETCH_CLASS` 对象不自动改写，可通过 `nativeStatement()` 自行处理。
 
 ## 6. 事务和原生 PDO
 

@@ -49,9 +49,16 @@ foreach ($iterator as $file) {
         throw new RuntimeException("Invalid JSON result: {$path}: " . json_last_error_msg());
     }
 
-    $isContractResult = isset($result['php'], $result['architecture'], $result['mode'], $result['summary'], $result['tests']);
-    if (!$isContractResult) {
+    // Ignore historical PDO_PGSQL and special-contract results in a mixed result tree.
+    // Files claiming the current contract must still identify the ODBC delivery path.
+    if (($result['contract'] ?? null) !== 'gaussdb-php-compat-v1') {
         continue;
+    }
+    if (($result['driver'] ?? null) !== 'odbc') {
+        throw new RuntimeException("Compatibility result is not an ODBC result: {$path}");
+    }
+    if (!isset($result['php'], $result['architecture'], $result['mode'], $result['summary'], $result['tests'])) {
+        throw new RuntimeException("Compatibility result is missing required fields: {$path}");
     }
     if (!isset($result['os']) || !is_string($result['os']) || $result['os'] === '') {
         throw new RuntimeException("Compatibility result is missing os: {$path}");

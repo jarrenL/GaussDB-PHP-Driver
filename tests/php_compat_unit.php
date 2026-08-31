@@ -83,4 +83,17 @@ checkUnit($bindType->allowsNull() && $bindType->getDefaultValue() === null, 'bin
 $fetchAllArguments = $statementClass->getMethod('fetchAll')->getParameters()[1];
 checkUnit($fetchAllArguments->isVariadic(), 'fetchAll must forward optional PDO arguments');
 
+$normalizeObject = $statementClass->getMethod('normalizeObject');
+$normalizeObject->setAccessible(true);
+$resultTypesProperty = $statementClass->getProperty('resultTypes');
+$resultTypesProperty->setAccessible(true);
+$resultTypesProperty->setValue($statement, ['enabled' => \GaussDb\Compat\ResultType::BOOLEAN]);
+$objectRow = (object) ['id' => '1', 'enabled' => 'True'];
+$normalizedObject = $normalizeObject->invoke($statement, $objectRow);
+checkUnit($normalizedObject->enabled === true, 'Named FETCH_OBJ normalization failed');
+$resultTypesProperty->setValue($statement, [1 => \GaussDb\Compat\ResultType::BOOLEAN]);
+$objectRow = (object) ['id' => '1', 'enabled' => 'False'];
+$normalizedObject = $normalizeObject->invoke($statement, $objectRow);
+checkUnit($normalizedObject->enabled === false, 'Positional FETCH_OBJ normalization failed');
+
 echo "compat unit tests passed\n";

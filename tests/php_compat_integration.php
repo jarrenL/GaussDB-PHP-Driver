@@ -178,6 +178,23 @@ try {
             [1 => ResultType::BOOLEAN]
         )->fetchAll(PDO::FETCH_COLUMN, 1);
         check($booleans === [true, false], 'FETCH_COLUMN index/result mapping changed');
+
+        $object = $connection->execute(
+            "SELECT id, enabled FROM {$table} WHERE id = ?",
+            [1],
+            ['enabled' => ResultType::BOOLEAN]
+        )->fetch(PDO::FETCH_OBJ);
+        check($object instanceof stdClass && $object->enabled === true, 'FETCH_OBJ result mapping changed');
+
+        $objects = $connection->execute(
+            "SELECT id, enabled FROM {$table} WHERE id IN (?, ?) ORDER BY id",
+            [1, 6],
+            [1 => ResultType::BOOLEAN]
+        )->fetchAll(PDO::FETCH_OBJ);
+        check(
+            count($objects) === 2 && $objects[0]->enabled === true && $objects[1]->enabled === false,
+            'FETCH_OBJ positional result mapping changed'
+        );
     });
 
     $run('update delete and affected row counts', static function () use ($connection, $table): void {
@@ -243,6 +260,8 @@ foreach ($tests as $test) {
     }
 }
 echo json_encode([
+    'contract' => 'gaussdb-php-compat-v1',
+    'driver' => 'odbc',
     'mode' => $mode,
     'database' => $database,
     'php' => PHP_VERSION,

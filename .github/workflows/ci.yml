@@ -38,9 +38,10 @@ jobs:
           bash -n tests/run-linux-driver-contract.sh
           bash -n tests/run-linux-compat-matrix.sh
           bash -n tests/run-linux-special-contract.sh
+          bash -n tests/test-generate-compat-baseline.sh
           bash -n tests/modes/run-local-mode-matrix.sh
       - name: Validate PHP files
-        run: make lint lint-php72 test-compat-unit test-compat-unit-php72
+        run: make lint lint-php72 test-compat-unit test-compat-unit-php72 test-baseline-generator test-baseline-generator-php72
       - name: Validate Composer package
         run: composer validate --strict
       - name: Validate tracked JSON baselines
@@ -63,6 +64,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+      - name: Validate integration configuration
+        env:
+          GAUSS_HOST: ${{ vars.GAUSS_HOST }}
+          GAUSS_USER: ${{ vars.GAUSS_USER }}
+          GAUSS_PASSWORD: ${{ secrets.GAUSS_PASSWORD }}
+          GAUSS_M_DATABASE: ${{ vars.GAUSS_M_DATABASE }}
+          GAUSS_O_DATABASE: ${{ vars.GAUSS_O_DATABASE }}
+        run: |
+          : "${GAUSS_HOST:?Configure repository variable GAUSS_HOST}"
+          : "${GAUSS_USER:?Configure repository variable GAUSS_USER}"
+          : "${GAUSS_PASSWORD:?Configure repository secret GAUSS_PASSWORD}"
+          : "${GAUSS_M_DATABASE:?Configure repository variable GAUSS_M_DATABASE}"
+          : "${GAUSS_O_DATABASE:?Configure repository variable GAUSS_O_DATABASE}"
       - name: Extract licensed ODBC packages
         env:
           ARM64_ARCHIVE: ${{ vars.GAUSSDB_ARM64_DRIVER_ARCHIVE }}

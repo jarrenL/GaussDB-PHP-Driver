@@ -81,4 +81,6 @@ make generate-compat-baseline \
   COMPAT_BASELINE_OUTPUT=build/test-results/compat-generated-matrix.json
 ```
 
-生成器会校验每个目标的用例名称和顺序、pass/fail 计数、目标唯一性，并记录原始文件名与契约脚本 SHA-256。CI 的 ODBC 集成 job 会上传原始 JSON 和自动汇总文件。
+每份正式原始结果都带有 `contract=gaussdb-php-compat-v1` 和 `driver=odbc` 标记。生成器只读取当前契约结果，因此即使输入目录混有历史 PDO_PGSQL 或专项测试 JSON，也不会混入正式基线；当前契约结果若不是 ODBC 则立即失败。生成器还会校验每个目标的用例名称和顺序、pass/fail 计数、目标唯一性，并记录原始文件名与契约脚本 SHA-256。CI 的 ODBC 集成 job 会上传原始 JSON 和自动汇总文件。
+
+手动触发 GitHub 集成 job 前，仓库必须配置 `GAUSS_HOST`、`GAUSS_USER`、`GAUSS_M_DATABASE`、`GAUSS_O_DATABASE` variables 和 `GAUSS_PASSWORD` secret；缺少任一项会在构建驱动镜像前明确失败，不使用数据库名默认值静默回退。

@@ -57,6 +57,9 @@ final class Statement
         if (is_array($row)) {
             return $this->normalizeRow($row);
         }
+        if ($row instanceof \stdClass) {
+            return $this->normalizeObject($row);
+        }
         if ($row !== false && $mode === PDO::FETCH_COLUMN && isset($this->resultTypes[0])) {
             return self::normalizeResult($row, $this->resultTypes[0]);
         }
@@ -74,6 +77,8 @@ final class Statement
         foreach ($rows as $index => $row) {
             if (is_array($row)) {
                 $rows[$index] = $this->normalizeRow($row);
+            } elseif ($row instanceof \stdClass) {
+                $rows[$index] = $this->normalizeObject($row);
             } elseif ($mode === PDO::FETCH_COLUMN && $columnType !== null && $row !== null) {
                 $rows[$index] = self::normalizeResult($row, $columnType);
             }
@@ -138,6 +143,18 @@ final class Statement
         foreach ($this->resultTypes as $column => $type) {
             if (array_key_exists($column, $row) && $row[$column] !== null) {
                 $row[$column] = self::normalizeResult($row[$column], $type);
+            }
+        }
+        return $row;
+    }
+
+    private function normalizeObject(\stdClass $row): \stdClass
+    {
+        $properties = array_keys(get_object_vars($row));
+        foreach ($this->resultTypes as $column => $type) {
+            $property = is_int($column) ? ($properties[$column] ?? null) : (string) $column;
+            if ($property !== null && property_exists($row, $property) && $row->{$property} !== null) {
+                $row->{$property} = self::normalizeResult($row->{$property}, $type);
             }
         }
         return $row;
