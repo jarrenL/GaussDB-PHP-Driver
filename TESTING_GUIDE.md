@@ -81,6 +81,8 @@ php tests/php_compat_integration.php
 
 ### 方式 B：Windows 测试机
 
+先按[测试制品说明](TEST_ASSETS.md)下载驱动包。Windows x64 使用 `build\gaussdb-client\windows-odbc\x64\gsqlodbc.exe`，Windows x86 使用 `build\gaussdb-client\windows-odbc\x86\gsqlodbc.exe`；PHP、PDO_ODBC 和 ODBC 驱动位数必须一致。
+
 ```powershell
 $env:GAUSS_PASSWORD = '***'
 ./tests/run-windows-compat-matrix.ps1 `
@@ -95,7 +97,7 @@ $env:GAUSS_PASSWORD = '***'
 ### 方式 C：Linux + Docker（跑完整矩阵）
 
 ```bash
-make extract-odbc-arm64 GAUSSDB_DRIVER_ARCHIVE='/受控目录/ARM64官方驱动包.tar.gz'
+make download-test-drivers
 make build-odbc-arm64
 
 export GAUSS_HOST='数据库IP'
@@ -108,7 +110,7 @@ export GAUSS_PASSWORD
 make test-compat-arm64
 ```
 
-x86_64 将上述目标换成 `extract-odbc-x86_64`、`build-odbc-x86_64` 和 `test-compat-x86_64`；PHP 7.2 矩阵使用 `test-compat-php72-arm64` 或 `test-compat-php72-x86_64`。驱动包必须来自受控目录，不提交到仓库。
+x86_64 将上述构建和测试目标换成 `build-odbc-x86_64`、`test-compat-x86_64`；PHP 7.2 矩阵使用 `test-compat-php72-arm64` 或 `test-compat-php72-x86_64`。下载文件、总包哈希和平台对应关系见[测试制品说明](TEST_ASSETS.md)。
 
 ## 4. 测试前准备清单
 

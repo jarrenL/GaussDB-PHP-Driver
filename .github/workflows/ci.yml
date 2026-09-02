@@ -34,6 +34,7 @@ jobs:
           bash -n scripts/extract-gaussdb-linux-odbc.sh
           bash -n scripts/extract-gaussdb-windows-odbc.sh
           bash -n scripts/extract-gaussdb-client-x86_64.sh
+          bash -n scripts/download-test-drivers.sh
           bash -n scripts/lib/extract-common.sh
           bash -n tests/run-linux-driver-contract.sh
           bash -n tests/run-linux-compat-matrix.sh

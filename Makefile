@@ -10,9 +10,10 @@ X86_64_PHP72_ODBC_IMAGE ?= gaussdb-php:7.2.34-x86_64-odbc
 COMPAT_RESULT_DIRECTORY ?= build/test-results
 COMPAT_BASELINE_OUTPUT ?= build/test-results/compat-generated-matrix.json
 
-.PHONY: help docker-preflight extract-client extract-client-arm64 extract-client-x86_64 extract-odbc-arm64 extract-odbc-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 build-odbc-arm64 build-odbc-x86_64 build-php72-odbc-arm64 build-php72-odbc-x86_64 test-compat-unit test-compat-unit-php72 test-baseline-generator test-baseline-generator-php72 test-compat-arm64 test-compat-x86_64 test-compat-php72-arm64 test-compat-php72-x86_64 generate-compat-baseline test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint lint-php72
+.PHONY: help docker-preflight download-test-drivers extract-client extract-client-arm64 extract-client-x86_64 extract-odbc-arm64 extract-odbc-x86_64 extract-windows-odbc build-php build-php-arm64 build-php-x86_64 build-odbc-arm64 build-odbc-x86_64 build-php72-odbc-arm64 build-php72-odbc-x86_64 test-compat-unit test-compat-unit-php72 test-baseline-generator test-baseline-generator-php72 test-compat-arm64 test-compat-x86_64 test-compat-php72-arm64 test-compat-php72-x86_64 generate-compat-baseline test-arm64 test-x86_64 test-modes test-auth test-readonly test-text-threshold test-ssl lint lint-php72
 
 help:
+	@echo "make download-test-drivers"
 	@echo "make extract-client-arm64 GAUSSDB_DRIVER_ARCHIVE=/path/to/aarch64-driver.tar.gz"
 	@echo "make extract-client-x86_64 GAUSSDB_DRIVER_ARCHIVE=/path/to/x86_64-driver.tar.gz"
 	@echo "make extract-windows-odbc GAUSSDB_DRIVER_ARCHIVE=/path/to/x86_64-driver.tar.gz"
@@ -40,6 +41,9 @@ help:
 
 docker-preflight:
 	./docker/preflight.sh
+
+download-test-drivers:
+	./scripts/download-test-drivers.sh build/gaussdb-client
 
 extract-client: extract-client-arm64
 
